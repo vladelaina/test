@@ -22,16 +22,49 @@ jobs:
         with:
           xmake-version: latest
           
+      - name: 设置MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+          
       - name: 构建项目
         run: |
-          xmake f -m release
-          xmake
+          # 显示xmake版本
+          xmake --version
+          
+          # 配置并构建项目
+          xmake f -p mingw -a x86_64 -m release
+          xmake -v
+          
+          # 显示构建输出目录结构
+          Write-Host "构建输出目录结构:"
+          Get-ChildItem -Path . -Directory | ForEach-Object { Write-Host $_.FullName }
+          if (Test-Path build) {
+            Get-ChildItem -Path build -Recurse | ForEach-Object { Write-Host $_.FullName }
+          }
           
       - name: 打包文件
         run: |
+          # 创建输出目录
           if (!(Test-Path release)) { New-Item -Path release -ItemType Directory }
           if (!(Test-Path release/catime)) { New-Item -Path release/catime -ItemType Directory }
-          Copy-Item -Path build/windows/x64/release/* -Destination release/catime/ -Recurse -Force
+          
+          # 查找构建输出文件
+          Write-Host "查找构建输出文件..."
+          Get-ChildItem -Path . -Recurse -Filter "catime.exe" | ForEach-Object { Write-Host $_.FullName }
+          
+          # 复制构建文件（使用正确的路径）
+          $buildOutput = Get-ChildItem -Path . -Recurse -Filter "catime.exe" | Select-Object -First 1
+          if ($buildOutput) {
+            $buildDir = $buildOutput.DirectoryName
+            Write-Host "找到构建目录: $buildDir"
+            Copy-Item -Path "$buildDir/*" -Destination release/catime/ -Recurse -Force
+          } else {
+            Write-Error "无法找到构建输出文件!"
+            exit 1
+          }
+          
+          # 复制其他必要文件
           Copy-Item -Path asset -Destination release/catime/ -Recurse -Force
           Copy-Item -Path LICENSE -Destination release/catime/ -Force
           Copy-Item -Path PRIVACY.md -Destination release/catime/ -Force
@@ -40,8 +73,17 @@ jobs:
           
       - name: 创建ZIP压缩包
         run: |
-          cd release
-          powershell Compress-Archive -Path catime -DestinationPath catime-${{ github.ref_name }}.zip
+          # 显示要打包的文件
+          Write-Host "要打包的文件:"
+          if (Test-Path release/catime) {
+            Get-ChildItem -Path release/catime -Recurse | ForEach-Object { Write-Host $_.FullName }
+          } else {
+            Write-Error "release/catime 目录不存在!"
+            exit 1
+          }
+          
+          # 创建ZIP包
+          Compress-Archive -Path release/catime/* -DestinationPath release/catime-${{ github.ref_name }}.zip -Force
           
       - name: 生成更新日志
         id: changelog
