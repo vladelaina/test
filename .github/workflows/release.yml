@@ -57,7 +57,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: catime_${{ env.TAG_VERSION }}.exe
-        name: Catime ${{ env.TAG_VERSION }}
+        name: ${{ github.ref_name }}
         body: |
           > [!TIP]
           > My friend, while downloading Catime, why not check out my friend's [Easy-Cat-Timer](https://github.com/xujiangjiang/Easy-Cat-Timer)— a super cute and practical countdown timer!
