@@ -1,0 +1,67 @@
+name: 标签自动发布
+run-name: 标签自动发布 ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - 'v*' # 匹配所有以v开头的标签，如v1.0.0
+
+jobs:
+  build:
+    name: 构建
+    runs-on: windows-latest
+    permissions: write-all
+    steps:
+      - name: 仓库检出
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取完整历史以便生成更新日志
+          
+      - name: 设置xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+          
+      - name: 构建项目
+        run: |
+          xmake f -m release
+          xmake
+          
+      - name: 打包文件
+        run: |
+          if (!(Test-Path release)) { New-Item -Path release -ItemType Directory }
+          if (!(Test-Path release/catime)) { New-Item -Path release/catime -ItemType Directory }
+          Copy-Item -Path build/windows/x64/release/* -Destination release/catime/ -Recurse -Force
+          Copy-Item -Path asset -Destination release/catime/ -Recurse -Force
+          Copy-Item -Path LICENSE -Destination release/catime/ -Force
+          Copy-Item -Path PRIVACY.md -Destination release/catime/ -Force
+          Copy-Item -Path README.md -Destination release/catime/ -Force
+          Copy-Item -Path README-zh.md -Destination release/catime/ -Force
+          
+      - name: 创建ZIP压缩包
+        run: |
+          cd release
+          powershell Compress-Archive -Path catime -DestinationPath catime-${{ github.ref_name }}.zip
+          
+      - name: 生成更新日志
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configuration: ".github/changelog-config.json"
+          commitMode: true
+          toTag: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 创建发布
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+          files: |
+            release/catime-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

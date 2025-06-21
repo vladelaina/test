@@ -1,0 +1,72 @@
+{
+  "categories": [
+    {
+      "title": "## 🚀 新功能",
+      "labels": ["feature", "enhancement", "feat"]
+    },
+    {
+      "title": "## 🐛 修复",
+      "labels": ["fix", "bugfix", "bug"]
+    },
+    {
+      "title": "## 📝 文档",
+      "labels": ["documentation", "docs"]
+    },
+    {
+      "title": "## 🔧 维护",
+      "labels": ["chore", "maintenance"]
+    }
+  ],
+  "template": "${{CHANGELOG}}\n\n**完整提交记录**: ${{RELEASE_DIFF}}",
+  "pr_template": "- ${{TITLE}} (#${{NUMBER}})",
+  "empty_template": "- 无重大更新",
+  "label_extractor": [
+    {
+      "pattern": "(.) (.+)",
+      "target": "$1",
+      "flags": "gu"
+    }
+  ],
+  "transformers": [
+    {
+      "pattern": "feat: (.*)",
+      "target": "- ✨ $1"
+    },
+    {
+      "pattern": "fix: (.*)",
+      "target": "- 🐛 $1"
+    },
+    {
+      "pattern": "docs: (.*)",
+      "target": "- 📝 $1"
+    },
+    {
+      "pattern": "chore: (.*)",
+      "target": "- 🔧 $1"
+    },
+    {
+      "pattern": "refactor: (.*)",
+      "target": "- ♻️ $1"
+    },
+    {
+      "pattern": "perf: (.*)",
+      "target": "- ⚡️ $1"
+    }
+  ],
+  "max_tags_to_fetch": 200,
+  "max_pull_requests": 200,
+  "max_back_track_time_days": 365,
+  "exclude_merge_branches": [
+    "Owner/main"
+  ],
+  "tag_resolver": {
+    "method": "semver",
+    "filter": {
+      "pattern": "v(.+)",
+      "flags": "gu"
+    }
+  },
+  "base_branches": [
+    "main"
+  ]
+} 
