@@ -1,0 +1,112 @@
+#include <windows.h>
+#include "resource.h"
+
+//-----------------------------------------------------------------------------
+// Program Icon
+//-----------------------------------------------------------------------------
+// Copyright notice: catime.ico is created by 猫屋敷梨梨Official 
+// (https://space.bilibili.com/26087398) with all rights reserved. 
+// Not for commercial use without explicit permission.
+IDI_CATIME ICON "../asset/icon/catime.ico"
+
+//-----------------------------------------------------------------------------
+// Fonts - CC BY-SA 4.0 License
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Fonts - MIT License
+//-----------------------------------------------------------------------------
+IDR_FONT_PROFONT         FONT "../asset/font/MIT/ProFont IIx Nerd Font Essence.ttf"
+
+//-----------------------------------------------------------------------------
+// Fonts - SIL Open Font License
+//-----------------------------------------------------------------------------
+IDR_FONT_DEPARTURE         FONT "../asset/font/SIL/DepartureMono Nerd Font Propo Essence.ttf"
+IDR_FONT_DADDYTIME        FONT "../asset/font/SIL/DaddyTimeMono Nerd Font Propo Essence.ttf"
+IDR_FONT_RECMONO           FONT "../asset/font/SIL/RecMonoCasual Nerd Font Mono Essence.ttf"
+IDR_FONT_TERMINESS         FONT "../asset/font/SIL/Terminess Nerd Font Propo Essence.ttf"
+
+//-----------------------------------------------------------------------------
+// Fonts - WTFPL License
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Fonts - SIL Open Font License (OFL)
+//-----------------------------------------------------------------------------
+IDR_FONT_ARBUTUS           FONT "../asset/font/OFL/Arbutus Essence.ttf"
+IDR_FONT_BERKSHIRE         FONT "../asset/font/OFL/Berkshire Swash Essence.ttf"
+IDR_FONT_CAVEAT            FONT "../asset/font/OFL/Caveat Brush Essence.ttf"
+IDR_FONT_CREEPSTER         FONT "../asset/font/OFL/Creepster Essence.ttf"
+IDR_FONT_DOTGOTHIC         FONT "../asset/font/OFL/DotGothic16 Essence.ttf"
+IDR_FONT_DOTO              FONT "../asset/font/OFL/Doto ExtraBold Essence.ttf"
+// IDR_FONT_FLAVORS           FONT "font/OFL/Flavors.ttf"
+IDR_FONT_FOLDIT            FONT "../asset/font/OFL/Foldit SemiBold Essence.ttf"
+IDR_FONT_FREDERICKA        FONT "../asset/font/OFL/Fredericka the Great Essence.ttf"
+IDR_FONT_FRIJOLE           FONT "../asset/font/OFL/Frijole Essence.ttf"
+// IDR_FONT_GRIFFY            FONT "font/OFL/Griffy.ttf"
+IDR_FONT_GWENDOLYN         FONT "../asset/font/OFL/Gwendolyn Essence.ttf"
+IDR_FONT_HANDJET           FONT "../asset/font/OFL/Handjet Essence.ttf"
+IDR_FONT_INKNUT            FONT "../asset/font/OFL/Inknut Antiqua Medium Essence.ttf"
+IDR_FONT_JACQUARD          FONT "../asset/font/OFL/Jacquard 12 Essence.ttf"
+IDR_FONT_JACQUARDA         FONT "../asset/font/OFL/Jacquarda Bastarda 9 Essence.ttf"
+IDR_FONT_KAVOON            FONT "../asset/font/OFL/Kavoon Essence.ttf"
+IDR_FONT_KUMAR_ONE_OUTLINE FONT "../asset/font/OFL/Kumar One Outline Essence.ttf"
+IDR_FONT_KUMAR_ONE         FONT "../asset/font/OFL/Kumar One Essence.ttf"
+IDR_FONT_LAKKI_REDDY       FONT "../asset/font/OFL/Lakki Reddy Essence.ttf"
+IDR_FONT_LICORICE          FONT "../asset/font/OFL/Licorice Essence.ttf"
+IDR_FONT_MA_SHAN_ZHENG     FONT "../asset/font/OFL/Ma Shan Zheng Essence.ttf"
+IDR_FONT_MOIRAI_ONE        FONT "../asset/font/OFL/Moirai One Essence.ttf"
+IDR_FONT_MYSTERY_QUEST     FONT "../asset/font/OFL/Mystery Quest Essence.ttf"
+IDR_FONT_NOTO_NASTALIQ     FONT "../asset/font/OFL/Noto Nastaliq Urdu Medium Essence.ttf"
+IDR_FONT_PIEDRA            FONT "../asset/font/OFL/Piedra Essence.ttf"
+IDR_FONT_PINYON_SCRIPT     FONT "../asset/font/OFL/Pinyon Script Essence.ttf"
+IDR_FONT_PIXELIFY          FONT "../asset/font/OFL/Pixelify Sans Medium Essence.ttf"
+IDR_FONT_PRESS_START       FONT "../asset/font/OFL/Press Start 2P Essence.ttf"
+// IDR_FONT_RUBIK_BEASTLY     FONT "font/OFL/Rubik Beastly.ttf"
+IDR_FONT_RUBIK_BUBBLES     FONT "../asset/font/OFL/Rubik Bubbles Essence.ttf"
+IDR_FONT_RUBIK_BURNED      FONT "../asset/font/OFL/Rubik Burned Essence.ttf"
+IDR_FONT_RUBIK_GLITCH      FONT "../asset/font/OFL/Rubik Glitch Essence.ttf"
+IDR_FONT_RUBIK_MARKER_HATCH FONT "../asset/font/OFL/Rubik Marker Hatch Essence.ttf"
+IDR_FONT_RUBIK_PUDDLES     FONT "../asset/font/OFL/Rubik Puddles Essence.ttf"
+IDR_FONT_RUBIK_VINYL       FONT "../asset/font/OFL/Rubik Vinyl Essence.ttf"
+IDR_FONT_RUBIK_WET_PAINT   FONT "../asset/font/OFL/Rubik Wet Paint Essence.ttf"
+IDR_FONT_RUGE_BOOGIE       FONT "../asset/font/OFL/Ruge Boogie Essence.ttf"
+IDR_FONT_SEVILLANA         FONT "../asset/font/OFL/Sevillana Essence.ttf"
+IDR_FONT_SILKSCREEN        FONT "../asset/font/OFL/Silkscreen Essence.ttf"
+IDR_FONT_STICK             FONT "../asset/font/OFL/Stick Essence.ttf"
+IDR_FONT_UNDERDOG          FONT "../asset/font/OFL/Underdog Essence.ttf"
+IDR_FONT_WALLPOET          FONT "../asset/font/OFL/Wallpoet Essence.ttf"
+IDR_FONT_YESTERYEAR        FONT "../asset/font/OFL/Yesteryear Essence.ttf"
+IDR_FONT_ZCOOL_KUAILE      FONT "../asset/font/OFL/ZCOOL KuaiLe Essence.ttf"
+
+//-----------------------------------------------------------------------------
+// Dialog Resources
+//-----------------------------------------------------------------------------
+// 输入框对话框
+IDD_INPUTBOX DIALOGEX 0, 0, 240, 90
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "输入"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "请输入:", IDC_STATIC_PROMPT, 7, 7, 226, 14
+    EDITTEXT        IDC_EDIT_INPUT, 7, 24, 226, 14, ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "确定", IDOK, 123, 69, 50, 14
+    PUSHBUTTON      "取消", IDCANCEL, 183, 69, 50, 14
+END
+
+#include "countdown_dialog.rc"
+#include "color_dialog.rc"
+#include "startup_dialog.rc"
+#include "shortcut_dialog.rc"
+#include "about_dialog.rc"
+#include "error_dialog.rc"
+#include "pomodoro_time_dialog.rc"
+#include "pomodoro_loop_dialog.rc"
+#include "pomodoro_combo_dialog.rc"
+#include "website_dialog.rc"
+#include "notification_dialog.rc"
+#include "update_dialog.rc"
+#include "no_update_dialog.rc"
+#include "hotkey_dialog.rc"
+
+1 RT_MANIFEST "app.manifest"

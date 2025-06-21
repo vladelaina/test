@@ -1,0 +1,40 @@
+#include <windows.h>
+#include "resource.h"
+
+// 设置 UTF-8 编码
+#pragma code_page(65001)
+
+// 关于对话框资源定义
+IDD_ABOUT_DIALOG DIALOGEX 0, 0, 255, 80
+// 对话框样式：模态框架、居中显示、弹出式窗口、带标题栏和系统菜单
+STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+// 对话框标题
+CAPTION IDC_ABOUT_TITLE_TEXT
+// 使用微软雅黑字体，大小为9
+FONT 12, "Microsoft YaHei UI"
+BEGIN
+    // 程序图标
+    CONTROL     "",                          IDC_ABOUT_ICON,    "Static", SS_ICON,                   
+                                                                          5,  -10, ABOUT_ICON_SIZE, ABOUT_ICON_SIZE
+
+    // 版本信息组
+    LTEXT       "",                          IDC_VERSION_TEXT,          130,  15, 160, 12
+    LTEXT       "",                          IDC_BUILD_DATE,            100,  25, 180, 12
+    LTEXT       "",                          IDC_COPYRIGHT,             100,  35, 180, 12
+
+    // 感谢信息
+    CONTROL     "",                          IDC_CREDIT_LINK,    "Static", SS_NOTIFY | SS_CENTERIMAGE,
+                                                                          100,  45, 145, 12
+
+    // 底部链接栏
+    CONTROL     "",                          IDC_CREDITS,        "Static", SS_NOTIFY | SS_CENTERIMAGE,
+                                                                          40,   65,  25, 12
+    CONTROL     "",                          IDC_BILIBILI_LINK,  "Static", SS_NOTIFY | SS_CENTERIMAGE,
+                                                                          80,   65,  35, 12
+    CONTROL     "",                          IDC_GITHUB_LINK,    "Static", SS_NOTIFY | SS_CENTERIMAGE,
+                                                                          125,  65,  32, 12
+    CONTROL     "",                          IDC_COPYRIGHT_LINK,  "Static", SS_NOTIFY | SS_CENTERIMAGE,
+                                                                          165,  65,  36, 12
+    CONTROL     "",                          IDC_SUPPORT,         "Static", SS_NOTIFY | SS_CENTERIMAGE,
+                                                                          215,  65,  25, 12
+END 
