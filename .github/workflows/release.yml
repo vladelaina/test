@@ -48,15 +48,15 @@ jobs:
       run: |
         # Execute xmake build
         xmake -y
-        # Find build artifacts
-        find . -name "catime.exe" -type f -print -exec cp {} catime.exe \;
+        # Find build artifacts and rename with version
+        find . -name "catime.exe" -type f -print -exec cp {} catime_${{ env.TAG_VERSION }}.exe \;
         echo "Build completed using xmake"
         
     - name: Create GitHub Release
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        files: catime.exe
+        files: catime_${{ env.TAG_VERSION }}.exe
         name: Catime ${{ env.TAG_VERSION }}
         body: |
           > [!TIP]
