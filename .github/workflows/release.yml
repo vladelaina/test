@@ -52,26 +52,6 @@ jobs:
         find . -name "catime.exe" -type f -print -exec cp {} catime.exe \;
         echo "Build completed using xmake"
         
-    - name: Install UPX compression tool
-      run: |
-        sudo apt-get install -y upx
-        upx --version
-        
-    - name: Compress executable
-      run: |
-        # Save pre-compression size
-        BEFORE_SIZE=$(stat -c %s catime.exe)
-        BEFORE_SIZE_KB=$((BEFORE_SIZE / 1024))
-        
-        # Compress the exe
-        upx --ultra-brute --lzma catime.exe
-        
-        # Save post-compression size and display results
-        AFTER_SIZE=$(stat -c %s catime.exe)
-        AFTER_SIZE_KB=$((AFTER_SIZE / 1024))
-        
-        echo "UPX compression: ${BEFORE_SIZE_KB}KiB → ${AFTER_SIZE_KB}KiB"
-        
     - name: Create GitHub Release
       id: create_release
       uses: softprops/action-gh-release@v1
