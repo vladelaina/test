@@ -59,6 +59,8 @@ jobs:
         files: catime_${{ env.TAG_VERSION }}.exe
         name: ${{ github.ref_name }}
         body: |
+          # 📝 Changelog
+
           > [!TIP]
           > My friend, while downloading Catime, why not check out my friend's [Easy-Cat-Timer](https://github.com/xujiangjiang/Easy-Cat-Timer)— a super cute and practical countdown timer!
           > 我的朋友，在下载 Catime 时，不妨顺便看看我朋友开发的 [Easy-Cat-Timer](https://github.com/xujiangjiang/Easy-Cat-Timer)——一款超级可爱又实用的倒计时软件！
