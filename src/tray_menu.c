@@ -15,6 +15,7 @@
 #include "../include/pomodoro.h"
 #include "../include/timer.h"
 #include "../include/config.h"
+#include "../include/log.h"
 #include "../resource/resource.h"
 
 /** @brief Timer state and display configuration externals */
