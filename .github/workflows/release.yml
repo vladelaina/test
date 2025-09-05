@@ -41,22 +41,15 @@ jobs:
       
     - name: Build application
       run: |
-        # Create build directory
-        mkdir -p build
-        cd build
+        # Make build script executable
+        chmod +x build.sh
         
-        # Configure CMake with MinGW cross-compilation
-        cmake .. \
-          -DCMAKE_TOOLCHAIN_FILE=../mingw-w64-toolchain.cmake \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
+        # Build using the same script as local development
+        ./build.sh Release
         
-        # Build the project
-        make -j$(nproc)
-        
-        # Copy and rename the executable
-        cp catime.exe ../catime_${{ env.TAG_VERSION }}.exe
-        echo "Build completed using CMake"
+        # Copy and rename the executable from build directory
+        cp build/catime.exe ./catime_${{ env.TAG_VERSION }}.exe
+        echo "Build completed using build.sh script"
         
     - name: Create GitHub Release
       id: create_release
