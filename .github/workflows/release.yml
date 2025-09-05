@@ -66,10 +66,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
-    - name: Update Winget Package
+    - name: Update Winget Package (Test Fork)
       uses: vedantmgoyal2009/winget-releaser@v2
       with:
         identifier: VladElaina.Catime
         version: ${{ env.TAG_VERSION }}
         installers-regex: '\.exe$'
         token: ${{ secrets.WINGET_TOKEN }}
+        winget-pkgs-fork: ywyjcloudvlad/winget-pkgs

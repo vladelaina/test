@@ -38,7 +38,37 @@
 2. 创建 GitHub Release
 3. 自动计算文件的 SHA256 哈希值
 4. 更新 Winget 包配置
-5. 自动提交到 Microsoft winget-pkgs 仓库
+5. 自动提交到测试仓库：https://github.com/ywyjcloudvlad/winget-pkgs
+
+## 🧪 测试配置
+
+当前配置为**测试模式**，会提交到您的 fork 仓库 `ywyjcloudvlad/winget-pkgs` 而不是官方的 Microsoft winget-pkgs 仓库。
+
+### 切换到正式发布
+
+测试完成后，如果要提交到官方仓库，需要修改 `.github/workflows/release.yml` 文件：
+
+```yaml
+# 测试模式（当前配置）
+- name: Update Winget Package (Test Fork)
+  uses: vedantmgoyal2009/winget-releaser@v2
+  with:
+    identifier: VladElaina.Catime
+    version: ${{ env.TAG_VERSION }}
+    installers-regex: '\.exe$'
+    token: ${{ secrets.WINGET_TOKEN }}
+    winget-pkgs-fork: ywyjcloudvlad/winget-pkgs  # 测试仓库
+
+# 正式模式（移除 winget-pkgs-fork 参数）
+- name: Update Winget Package
+  uses: vedantmgoyal2009/winget-releaser@v2
+  with:
+    identifier: VladElaina.Catime
+    version: ${{ env.TAG_VERSION }}
+    installers-regex: '\.exe$'
+    token: ${{ secrets.WINGET_TOKEN }}
+    # winget-pkgs-fork: ywyjcloudvlad/winget-pkgs  # 注释掉这行
+```
 
 ## 📋 检查清单
 
@@ -58,7 +88,7 @@
    ```
 3. 检查 GitHub Actions 是否成功运行
 4. 验证是否创建了 GitHub Release
-5. 检查是否自动提交到了 winget-pkgs 仓库
+5. 检查是否自动提交到了测试仓库：https://github.com/ywyjcloudvlad/winget-pkgs
 
 ### 故障排除
 
