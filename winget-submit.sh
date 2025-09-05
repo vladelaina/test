@@ -66,7 +66,47 @@ fi
 # 克隆或更新用户的 fork
 if [ ! -d "winget-pkgs" ]; then
     echo "📥 克隆用户 fork..."
-    gh repo clone $USER_FORK winget-pkgs
+    
+    # 等待fork初始化完成
+    echo "⏳ 等待fork初始化..."
+    sleep 10
+    
+    # 重试克隆逻辑
+    RETRY_COUNT=0
+    MAX_RETRIES=3
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        echo "📥 尝试克隆 fork (第 $((RETRY_COUNT + 1)) 次)..."
+        
+        if gh repo clone $USER_FORK winget-pkgs; then
+            echo "✅ 克隆成功"
+            break
+        else
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⚠️  克隆失败，等待 30 秒后重试..."
+                sleep 30
+            else
+                echo "❌ 克隆失败，尝试备用方法..."
+                # 备用方法：使用git直接克隆
+                if git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/$USER_FORK.git" winget-pkgs; then
+                    echo "✅ 使用备用方法克隆成功"
+                    break
+                else
+                    echo "❌ 所有克隆方法都失败了"
+                    echo "💡 可能的原因："
+                    echo "   1. GitHub服务暂时不可用 (503错误)"
+                    echo "   2. fork刚创建，还未完全初始化"
+                    echo "   3. 网络连接问题"
+                    echo ""
+                    echo "🔧 建议："
+                    echo "   1. 等待几分钟后重新运行workflow"
+                    echo "   2. 检查GitHub状态页面：https://www.githubstatus.com/"
+                    exit 1
+                fi
+            fi
+        fi
+    done
 else
     echo "🔄 更新用户 fork..."
     cd winget-pkgs
@@ -81,9 +121,21 @@ else
     
     # 获取最新更改
     git fetch upstream
-    git checkout master
-    git merge upstream/master
-    git push origin master
+    
+    # 检测默认分支
+    UPSTREAM_DEFAULT_BRANCH=$(git remote show upstream | grep 'HEAD branch' | cut -d' ' -f5)
+    if [ -z "$UPSTREAM_DEFAULT_BRANCH" ]; then
+        if git show-ref --verify --quiet refs/remotes/upstream/main; then
+            UPSTREAM_DEFAULT_BRANCH="main"
+        else
+            UPSTREAM_DEFAULT_BRANCH="master"
+        fi
+    fi
+    
+    echo "📋 上游默认分支：$UPSTREAM_DEFAULT_BRANCH"
+    git checkout $UPSTREAM_DEFAULT_BRANCH
+    git merge upstream/$UPSTREAM_DEFAULT_BRANCH
+    git push origin HEAD
     cd ..
 fi
 
@@ -93,8 +145,23 @@ cd winget-pkgs
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
+# 确保在正确的基础分支上
+DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+if [ -z "$DEFAULT_BRANCH" ]; then
+    # 备用检测方法
+    if git show-ref --verify --quiet refs/remotes/origin/main; then
+        DEFAULT_BRANCH="main"
+    else
+        DEFAULT_BRANCH="master"
+    fi
+fi
+
+echo "📋 默认分支：$DEFAULT_BRANCH"
+git checkout $DEFAULT_BRANCH
+
 # 创建新的分支
 BRANCH_NAME="catime-$TAG_VERSION"
+echo "🌿 创建分支：$BRANCH_NAME"
 git checkout -b $BRANCH_NAME
 
 # 创建清单文件目录
@@ -229,7 +296,7 @@ PR_BODY="自动提交 Catime $TAG_VERSION 版本到 winget
 gh pr create \
   --title "$PR_TITLE" \
   --body "$PR_BODY" \
-  --base master \
+  --base "$DEFAULT_BRANCH" \
   --head "$GITHUB_USER:$BRANCH_NAME" \
   --repo "$UPSTREAM_REPO"
 
@@ -243,7 +310,7 @@ else
     echo "💡 可以手动创建 PR："
     echo "   源分支：$GITHUB_USER:$BRANCH_NAME"
     echo "   目标仓库：$UPSTREAM_REPO"
-    echo "   目标分支：master"
+    echo "   目标分支：$DEFAULT_BRANCH"
 fi
 
 echo ""
