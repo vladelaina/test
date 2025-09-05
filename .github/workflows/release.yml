@@ -73,3 +73,4 @@ jobs:
         installers-regex: '\.exe$'  # Only .exe files
         token: ${{ secrets.WINGET_TOKEN }}
         fork-user: ywyjcloudvlad  # Your fork username for testing
+        max-versions-to-keep: 0  # Keep all versions
