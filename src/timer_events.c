@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "../include/window.h"
+#include "../include/drawing.h"
 #include "audio_player.h"
 
 #define MAX_POMODORO_TIMES 10
@@ -33,6 +34,20 @@ extern void ShowNotification(HWND hwnd, const wchar_t* message);
 
 extern int elapsed_time;
 extern BOOL message_shown;
+
+/** @brief Millisecond accumulator for precise timing */
+static DWORD last_timer_tick = 0;
+static int ms_accumulator = 0;
+
+/**
+ * @brief Reset millisecond accumulator and timer baseline for accurate timing
+ * Should be called when pausing/resuming or restarting timer to prevent time jumps
+ */
+void ResetMillisecondAccumulator(void) {
+    last_timer_tick = GetTickCount();
+    ms_accumulator = 0;
+    ResetTimerMilliseconds();  /** Also reset display milliseconds */
+}
 
 /** @brief Localized timeout message strings */
 extern char CLOCK_TIMEOUT_MESSAGE_TEXT[100];
@@ -220,7 +235,7 @@ BOOL HandleTimerEvent(HWND hwnd, WPARAM wp) {
         SetTimer(hwnd, 1003, 2000, NULL);
         return TRUE;
     }
-    /** Timer 1: Main application timer (1-second interval) */
+    /** Timer 1: Main application timer (dynamic interval) */
     if (wp == 1) {
         /** Clock mode: display current time */
         if (CLOCK_SHOW_CURRENT_TIME) {
@@ -231,19 +246,39 @@ BOOL HandleTimerEvent(HWND hwnd, WPARAM wp) {
             return TRUE;
         }
 
-        /** Skip timer updates when paused */
+        /** Always update screen for milliseconds display, but only update seconds when appropriate */
+        InvalidateRect(hwnd, NULL, TRUE);
+
+        /** Skip timer logic updates when paused */
         if (CLOCK_IS_PAUSED) {
             return TRUE;
         }
 
-        /** Count-up mode: increment elapsed time */
-        if (CLOCK_COUNT_UP) {
-            countup_elapsed_time++;
-            InvalidateRect(hwnd, NULL, TRUE);
-        } else {
-            /** Countdown mode: process timer completion and Pomodoro logic */
-            if (countdown_elapsed_time < CLOCK_TOTAL_TIME) {
-                countdown_elapsed_time++;
+        /** Calculate actual elapsed time since last update */
+        DWORD current_tick = GetTickCount();
+        if (last_timer_tick == 0) {
+            last_timer_tick = current_tick;
+            return TRUE;
+        }
+        
+        DWORD elapsed_ms = current_tick - last_timer_tick;
+        last_timer_tick = current_tick;
+        ms_accumulator += elapsed_ms;
+        
+        /** Only update seconds when we've accumulated at least 1 second */
+        if (ms_accumulator >= 1000) {
+            int seconds_to_add = ms_accumulator / 1000;
+            ms_accumulator %= 1000;  /** Keep remainder for next time */
+            
+            /** Count-up mode: increment elapsed time by actual seconds */
+            if (CLOCK_COUNT_UP) {
+                countup_elapsed_time += seconds_to_add;
+            } else {
+                /** Countdown mode: process timer completion and Pomodoro logic */
+                if (countdown_elapsed_time < CLOCK_TOTAL_TIME) {
+                    countdown_elapsed_time += seconds_to_add;
+                }
+                
                 if (countdown_elapsed_time >= CLOCK_TOTAL_TIME && !countdown_message_shown) {
                     countdown_message_shown = TRUE;
 
@@ -445,18 +480,6 @@ BOOL HandleTimerEvent(HWND hwnd, WPARAM wp) {
                                     ShellExecuteW(NULL, L"open", CLOCK_TIMEOUT_WEBSITE_URL, NULL, NULL, SW_NORMAL);
                                 }
                                 break;
-                            case TIMEOUT_ACTION_RUN_COMMAND:
-                                MessageBoxW(hwnd, 
-                                    GetLocalizedString(L"运行命令功能正在开发中", L"Run Command feature is under development"),
-                                    GetLocalizedString(L"提示", L"Notice"),
-                                    MB_ICONINFORMATION);
-                                break;
-                            case TIMEOUT_ACTION_HTTP_REQUEST:
-                                MessageBoxW(hwnd, 
-                                    GetLocalizedString(L"HTTP请求功能正在开发中", L"HTTP Request feature is under development"),
-                                    GetLocalizedString(L"提示", L"Notice"),
-                                    MB_ICONINFORMATION);
-                                break;
                         }
                     }
 
@@ -512,22 +535,6 @@ void OnTimerTimeout(HWND hwnd) {
             ReadNotificationSoundConfig();
             PlayNotificationSound(hwnd);
             
-            break;
-        }
-        case TIMEOUT_ACTION_RUN_COMMAND: {
-            /** Placeholder for future command execution feature */
-            MessageBoxW(hwnd, 
-                GetLocalizedString(L"运行命令功能正在开发中", L"Run Command feature is under development"),
-                GetLocalizedString(L"提示", L"Notice"),
-                MB_ICONINFORMATION);
-            break;
-        }
-        case TIMEOUT_ACTION_HTTP_REQUEST: {
-            /** Placeholder for future HTTP request feature */
-            MessageBoxW(hwnd, 
-                GetLocalizedString(L"HTTP请求功能正在开发中", L"HTTP Request feature is under development"),
-                GetLocalizedString(L"提示", L"Notice"),
-                MB_ICONINFORMATION);
             break;
         }
 

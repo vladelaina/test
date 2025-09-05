@@ -59,6 +59,13 @@ TimeFormatType CLOCK_TIME_FORMAT = TIME_FORMAT_DEFAULT;
 BOOL IS_TIME_FORMAT_PREVIEWING = FALSE;
 TimeFormatType PREVIEW_TIME_FORMAT = TIME_FORMAT_DEFAULT;
 
+/** @brief Milliseconds display setting */
+BOOL CLOCK_SHOW_MILLISECONDS = FALSE;
+
+/** @brief Milliseconds preview variables */
+BOOL IS_MILLISECONDS_PREVIEWING = FALSE;
+BOOL PREVIEW_SHOW_MILLISECONDS = FALSE;
+
 
 /**
  * @brief Read string value from INI file with Unicode support
@@ -76,15 +83,15 @@ DWORD ReadIniString(const char* section, const char* key, const char* defaultVal
     wchar_t wsection[256], wkey[256], wdefaultValue[1024], wfilePath[MAX_PATH];
     wchar_t wreturnValue[1024];
     
-    MultiByteToWideChar(CP_ACP, 0, section, -1, wsection, 256);
-    MultiByteToWideChar(CP_ACP, 0, key, -1, wkey, 256);
-    MultiByteToWideChar(CP_ACP, 0, defaultValue, -1, wdefaultValue, 1024);
-    MultiByteToWideChar(CP_ACP, 0, filePath, -1, wfilePath, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, section, -1, wsection, 256);
+    MultiByteToWideChar(CP_UTF8, 0, key, -1, wkey, 256);
+    MultiByteToWideChar(CP_UTF8, 0, defaultValue, -1, wdefaultValue, 1024);
+    MultiByteToWideChar(CP_UTF8, 0, filePath, -1, wfilePath, MAX_PATH);
     
     DWORD result = GetPrivateProfileStringW(wsection, wkey, wdefaultValue, wreturnValue, 1024, wfilePath);
     
-    /** Convert result back to ANSI */
-    WideCharToMultiByte(CP_ACP, 0, wreturnValue, -1, returnValue, returnSize, NULL, NULL);
+    /** Convert result back to UTF-8 */
+    WideCharToMultiByte(CP_UTF8, 0, wreturnValue, -1, returnValue, returnSize, NULL, NULL);
     
     return result;
 }
@@ -103,10 +110,10 @@ BOOL WriteIniString(const char* section, const char* key, const char* value,
 
     wchar_t wsection[256], wkey[256], wvalue[1024], wfilePath[MAX_PATH];
     
-    MultiByteToWideChar(CP_ACP, 0, section, -1, wsection, 256);
-    MultiByteToWideChar(CP_ACP, 0, key, -1, wkey, 256);
-    MultiByteToWideChar(CP_ACP, 0, value, -1, wvalue, 1024);
-    MultiByteToWideChar(CP_ACP, 0, filePath, -1, wfilePath, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, section, -1, wsection, 256);
+    MultiByteToWideChar(CP_UTF8, 0, key, -1, wkey, 256);
+    MultiByteToWideChar(CP_UTF8, 0, value, -1, wvalue, 1024);
+    MultiByteToWideChar(CP_UTF8, 0, filePath, -1, wfilePath, MAX_PATH);
     
     return WritePrivateProfileStringW(wsection, wkey, wvalue, wfilePath);
 }
@@ -125,9 +132,9 @@ int ReadIniInt(const char* section, const char* key, int defaultValue,
 
     wchar_t wsection[256], wkey[256], wfilePath[MAX_PATH];
     
-    MultiByteToWideChar(CP_ACP, 0, section, -1, wsection, 256);
-    MultiByteToWideChar(CP_ACP, 0, key, -1, wkey, 256);
-    MultiByteToWideChar(CP_ACP, 0, filePath, -1, wfilePath, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, section, -1, wsection, 256);
+    MultiByteToWideChar(CP_UTF8, 0, key, -1, wkey, 256);
+    MultiByteToWideChar(CP_UTF8, 0, filePath, -1, wfilePath, MAX_PATH);
     
     return GetPrivateProfileIntW(wsection, wkey, defaultValue, wfilePath);
 }
@@ -149,10 +156,10 @@ BOOL WriteIniInt(const char* section, const char* key, int value,
     /** Convert to Unicode for Windows API */
     wchar_t wsection[256], wkey[256], wvalue[32], wfilePath[MAX_PATH];
     
-    MultiByteToWideChar(CP_ACP, 0, section, -1, wsection, 256);
-    MultiByteToWideChar(CP_ACP, 0, key, -1, wkey, 256);
-    MultiByteToWideChar(CP_ACP, 0, valueStr, -1, wvalue, 32);
-    MultiByteToWideChar(CP_ACP, 0, filePath, -1, wfilePath, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, section, -1, wsection, 256);
+    MultiByteToWideChar(CP_UTF8, 0, key, -1, wkey, 256);
+    MultiByteToWideChar(CP_UTF8, 0, valueStr, -1, wvalue, 32);
+    MultiByteToWideChar(CP_UTF8, 0, filePath, -1, wfilePath, MAX_PATH);
     
     return WritePrivateProfileStringW(wsection, wkey, wvalue, wfilePath);
 }
@@ -173,10 +180,10 @@ BOOL WriteIniBool(const char* section, const char* key, BOOL value,
     /** Convert to Unicode for Windows API */
     wchar_t wsection[256], wkey[256], wvalue[8], wfilePath[MAX_PATH];
     
-    MultiByteToWideChar(CP_ACP, 0, section, -1, wsection, 256);
-    MultiByteToWideChar(CP_ACP, 0, key, -1, wkey, 256);
-    MultiByteToWideChar(CP_ACP, 0, valueStr, -1, wvalue, 8);
-    MultiByteToWideChar(CP_ACP, 0, filePath, -1, wfilePath, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, section, -1, wsection, 256);
+    MultiByteToWideChar(CP_UTF8, 0, key, -1, wkey, 256);
+    MultiByteToWideChar(CP_UTF8, 0, valueStr, -1, wvalue, 8);
+    MultiByteToWideChar(CP_UTF8, 0, filePath, -1, wfilePath, MAX_PATH);
     
     return WritePrivateProfileStringW(wsection, wkey, wvalue, wfilePath);
 }
@@ -199,15 +206,15 @@ BOOL ReadIniBool(const char* section, const char* key, BOOL defaultValue,
     wchar_t wsection[256], wkey[256], wdefaultValue[8], wfilePath[MAX_PATH];
     wchar_t wvalue[8];
     
-    MultiByteToWideChar(CP_ACP, 0, section, -1, wsection, 256);
-    MultiByteToWideChar(CP_ACP, 0, key, -1, wkey, 256);
-    MultiByteToWideChar(CP_ACP, 0, defaultStr, -1, wdefaultValue, 8);
-    MultiByteToWideChar(CP_ACP, 0, filePath, -1, wfilePath, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, section, -1, wsection, 256);
+    MultiByteToWideChar(CP_UTF8, 0, key, -1, wkey, 256);
+    MultiByteToWideChar(CP_UTF8, 0, defaultStr, -1, wdefaultValue, 8);
+    MultiByteToWideChar(CP_UTF8, 0, filePath, -1, wfilePath, MAX_PATH);
     
     GetPrivateProfileStringW(wsection, wkey, wdefaultValue, wvalue, 8, wfilePath);
     
-    /** Convert result back to ANSI and compare */
-    WideCharToMultiByte(CP_ACP, 0, wvalue, -1, value, sizeof(value), NULL, NULL);
+    /** Convert result back to UTF-8 and compare */
+    WideCharToMultiByte(CP_UTF8, 0, wvalue, -1, value, sizeof(value), NULL, NULL);
     
     return _stricmp(value, "TRUE") == 0;
 }
@@ -221,7 +228,7 @@ BOOL ReadIniBool(const char* section, const char* key, BOOL defaultValue,
 BOOL FileExists(const char* filePath) {
     /** Convert to Unicode for Windows API */
     wchar_t wfilePath[MAX_PATH];
-    MultiByteToWideChar(CP_ACP, 0, filePath, -1, wfilePath, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, filePath, -1, wfilePath, MAX_PATH);
     
     return GetFileAttributesW(wfilePath) != INVALID_FILE_ATTRIBUTES;
 }
@@ -359,6 +366,7 @@ void CreateDefaultConfig(const char* config_path) {
     WriteIniString(INI_SECTION_TIMER, "CLOCK_USE_24HOUR", "FALSE", config_path);
     WriteIniString(INI_SECTION_TIMER, "CLOCK_SHOW_SECONDS", "FALSE", config_path);
     WriteIniString(INI_SECTION_TIMER, "CLOCK_TIME_FORMAT", "DEFAULT", config_path);
+    WriteIniString(INI_SECTION_TIMER, "CLOCK_SHOW_MILLISECONDS", "FALSE", config_path);
     WriteIniString(INI_SECTION_TIMER, "CLOCK_TIME_OPTIONS", "1500,600,300", config_path);
     WriteIniString(INI_SECTION_TIMER, "CLOCK_TIMEOUT_TEXT", "0", config_path);
     WriteIniString(INI_SECTION_TIMER, "CLOCK_TIMEOUT_ACTION", "MESSAGE", config_path);
@@ -658,6 +666,9 @@ void ReadConfig() {
         CLOCK_TIME_FORMAT = TIME_FORMAT_DEFAULT;
     }
     
+    /** Load milliseconds display setting */
+    CLOCK_SHOW_MILLISECONDS = ReadIniBool(INI_SECTION_TIMER, "CLOCK_SHOW_MILLISECONDS", FALSE, config_path);
+    
     /** Parse language string to enum value */
     int languageSetting = APP_LANG_ENGLISH;
     
@@ -843,10 +854,6 @@ void ReadConfig() {
         CLOCK_TIMEOUT_ACTION = TIMEOUT_ACTION_OPEN_WEBSITE;
     } else if (strcmp(timeoutAction, "SLEEP") == 0) {
         CLOCK_TIMEOUT_ACTION = TIMEOUT_ACTION_SLEEP;
-    } else if (strcmp(timeoutAction, "RUN_COMMAND") == 0) {
-        CLOCK_TIMEOUT_ACTION = TIMEOUT_ACTION_RUN_COMMAND;
-    } else if (strcmp(timeoutAction, "HTTP_REQUEST") == 0) {
-        CLOCK_TIMEOUT_ACTION = TIMEOUT_ACTION_HTTP_REQUEST;
     }
     
 
@@ -1724,12 +1731,6 @@ void WriteConfig(const char* config_path) {
         case TIMEOUT_ACTION_SLEEP:
             timeoutActionStr = "MESSAGE";
             break;
-        case TIMEOUT_ACTION_RUN_COMMAND:
-            timeoutActionStr = "RUN_COMMAND";
-            break;
-        case TIMEOUT_ACTION_HTTP_REQUEST:
-            timeoutActionStr = "HTTP_REQUEST";
-            break;
         default:
             timeoutActionStr = "MESSAGE";
     }
@@ -1775,6 +1776,7 @@ void WriteConfig(const char* config_path) {
             break;
     }
     WriteIniString(INI_SECTION_TIMER, "CLOCK_TIME_FORMAT", timeFormatStr, config_path);
+    WriteIniString(INI_SECTION_TIMER, "CLOCK_SHOW_MILLISECONDS", CLOCK_SHOW_MILLISECONDS ? "TRUE" : "FALSE", config_path);
     WriteIniString(INI_SECTION_TIMER, "CLOCK_TIMEOUT_TEXT", CLOCK_TIMEOUT_TEXT, config_path);
     WriteIniString(INI_SECTION_TIMER, "CLOCK_TIMEOUT_ACTION", timeoutActionStr, config_path);
     WriteIniString(INI_SECTION_TIMER, "CLOCK_TIMEOUT_FILE", CLOCK_TIMEOUT_FILE_PATH, config_path);
@@ -2017,70 +2019,12 @@ void WriteConfigPomodoroTimeOptions(int* times, int count) {
  */
 void WriteConfigNotificationMessages(const char* timeout_msg, const char* pomodoro_msg, const char* cycle_complete_msg) {
     char config_path[MAX_PATH];
-    char temp_path[MAX_PATH];
     GetConfigPath(config_path, MAX_PATH);
-    snprintf(temp_path, MAX_PATH, "%s.tmp", config_path);
     
-    FILE *source_file, *temp_file;
-    
-    source_file = fopen(config_path, "r");
-    temp_file = fopen(temp_path, "w");
-    
-    if (!source_file || !temp_file) {
-        if (source_file) fclose(source_file);
-        if (temp_file) fclose(temp_file);
-        return;
-    }
-    
-    char line[1024];
-    BOOL timeoutFound = FALSE;
-    BOOL pomodoroFound = FALSE;
-    BOOL cycleFound = FALSE;
-    
-    /** Process each line, updating message entries */
-    while (fgets(line, sizeof(line), source_file)) {
-        /** Strip trailing newlines for proper processing */
-        size_t len = strlen(line);
-        if (len > 0 && (line[len-1] == '\n' || line[len-1] == '\r')) {
-            line[--len] = '\0';
-            if (len > 0 && line[len-1] == '\r')
-                line[--len] = '\0';
-        }
-        
-        if (strncmp(line, "CLOCK_TIMEOUT_MESSAGE_TEXT=", 27) == 0) {
-            fprintf(temp_file, "CLOCK_TIMEOUT_MESSAGE_TEXT=%s\n", timeout_msg);
-            timeoutFound = TRUE;
-        } else if (strncmp(line, "POMODORO_TIMEOUT_MESSAGE_TEXT=", 30) == 0) {
-            fprintf(temp_file, "POMODORO_TIMEOUT_MESSAGE_TEXT=%s\n", pomodoro_msg);
-            pomodoroFound = TRUE;
-        } else if (strncmp(line, "POMODORO_CYCLE_COMPLETE_TEXT=", 29) == 0) {
-            fprintf(temp_file, "POMODORO_CYCLE_COMPLETE_TEXT=%s\n", cycle_complete_msg);
-            cycleFound = TRUE;
-        } else {
-            /** Copy unchanged line */
-            fprintf(temp_file, "%s\n", line);
-        }
-    }
-    
-    /** Add missing message entries */
-    if (!timeoutFound) {
-        fprintf(temp_file, "CLOCK_TIMEOUT_MESSAGE_TEXT=%s\n", timeout_msg);
-    }
-    
-    if (!pomodoroFound) {
-        fprintf(temp_file, "POMODORO_TIMEOUT_MESSAGE_TEXT=%s\n", pomodoro_msg);
-    }
-    
-    if (!cycleFound) {
-        fprintf(temp_file, "POMODORO_CYCLE_COMPLETE_TEXT=%s\n", cycle_complete_msg);
-    }
-    
-    fclose(source_file);
-    fclose(temp_file);
-    
-    /** Replace original with updated config */
-    remove(config_path);
-    rename(temp_path, config_path);
+    /** Use standard WriteIniString for consistent encoding handling */
+    WriteIniString(INI_SECTION_NOTIFICATION, "CLOCK_TIMEOUT_MESSAGE_TEXT", timeout_msg, config_path);
+    WriteIniString(INI_SECTION_NOTIFICATION, "POMODORO_TIMEOUT_MESSAGE_TEXT", pomodoro_msg, config_path);
+    WriteIniString(INI_SECTION_NOTIFICATION, "POMODORO_CYCLE_COMPLETE_TEXT", cycle_complete_msg, config_path);
     
     /** Update global message variables immediately */
     strncpy(CLOCK_TIMEOUT_MESSAGE_TEXT, timeout_msg, sizeof(CLOCK_TIMEOUT_MESSAGE_TEXT) - 1);
@@ -2095,119 +2039,22 @@ void WriteConfigNotificationMessages(const char* timeout_msg, const char* pomodo
 
 
 /**
- * @brief Read notification message texts from config using low-level file I/O
- * Uses Windows API for UTF-8 BOM handling and manual line parsing
+ * @brief Read notification message texts from config using standard Windows API
+ * This ensures consistent encoding handling with other configuration items
  */
 void ReadNotificationMessagesConfig(void) {
     char config_path[MAX_PATH];
     GetConfigPath(config_path, MAX_PATH);
 
-    /** Open config file using Unicode-aware Windows API */
-    wchar_t wconfig_path[MAX_PATH];
-    MultiByteToWideChar(CP_ACP, 0, config_path, -1, wconfig_path, MAX_PATH);
+    /** Use standard ReadIniString for consistent encoding handling */
+    ReadIniString(INI_SECTION_NOTIFICATION, "CLOCK_TIMEOUT_MESSAGE_TEXT", "时间到啦！", 
+                 CLOCK_TIMEOUT_MESSAGE_TEXT, sizeof(CLOCK_TIMEOUT_MESSAGE_TEXT), config_path);
     
-    HANDLE hFile = CreateFileW(
-        wconfig_path,
-        GENERIC_READ,
-        FILE_SHARE_READ,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
+    ReadIniString(INI_SECTION_NOTIFICATION, "POMODORO_TIMEOUT_MESSAGE_TEXT", "番茄钟时间到！", 
+                 POMODORO_TIMEOUT_MESSAGE_TEXT, sizeof(POMODORO_TIMEOUT_MESSAGE_TEXT), config_path);
     
-    if (hFile == INVALID_HANDLE_VALUE) {
-        /** Config file not found, use defaults */
-        return;
-    }
-
-    /** Check for UTF-8 BOM and skip if present */
-    char bom[3];
-    DWORD bytesRead;
-    ReadFile(hFile, bom, 3, &bytesRead, NULL);
-    
-    if (bytesRead != 3 || bom[0] != 0xEF || bom[1] != 0xBB || bom[2] != 0xBF) {
-        /** No BOM found, reset to beginning */
-        SetFilePointer(hFile, 0, NULL, FILE_BEGIN);
-    }
-    
-    char line[1024];
-    BOOL timeoutMsgFound = FALSE;
-    BOOL pomodoroTimeoutMsgFound = FALSE;
-    BOOL cycleCompleteMsgFound = FALSE;
-    
-    /** Manual line-by-line parsing for UTF-8 support */
-    BOOL readingLine = TRUE;
-    int pos = 0;
-    
-    while (readingLine) {
-        /** Read one line character by character */
-        bytesRead = 0;
-        pos = 0;
-        memset(line, 0, sizeof(line));
-        
-        while (TRUE) {
-            char ch;
-            ReadFile(hFile, &ch, 1, &bytesRead, NULL);
-            
-            if (bytesRead == 0) {
-                readingLine = FALSE;
-                break;
-            }
-            
-            if (ch == '\n') {
-                break;
-            }
-            
-            /** Skip carriage returns, keep other characters */
-            if (ch != '\r') {
-                line[pos++] = ch;
-                if (pos >= sizeof(line) - 1) break;
-            }
-        }
-        
-        line[pos] = '\0';
-        
-        /** Skip empty lines at end of file */
-        if (pos == 0 && !readingLine) {
-            break;
-        }
-        
-        /** Parse notification message configuration lines */
-        if (strncmp(line, "CLOCK_TIMEOUT_MESSAGE_TEXT=", 27) == 0) {
-            strncpy(CLOCK_TIMEOUT_MESSAGE_TEXT, line + 27, sizeof(CLOCK_TIMEOUT_MESSAGE_TEXT) - 1);
-            CLOCK_TIMEOUT_MESSAGE_TEXT[sizeof(CLOCK_TIMEOUT_MESSAGE_TEXT) - 1] = '\0';
-            timeoutMsgFound = TRUE;
-        } 
-        else if (strncmp(line, "POMODORO_TIMEOUT_MESSAGE_TEXT=", 30) == 0) {
-            strncpy(POMODORO_TIMEOUT_MESSAGE_TEXT, line + 30, sizeof(POMODORO_TIMEOUT_MESSAGE_TEXT) - 1);
-            POMODORO_TIMEOUT_MESSAGE_TEXT[sizeof(POMODORO_TIMEOUT_MESSAGE_TEXT) - 1] = '\0';
-            pomodoroTimeoutMsgFound = TRUE;
-        }
-        else if (strncmp(line, "POMODORO_CYCLE_COMPLETE_TEXT=", 29) == 0) {
-            strncpy(POMODORO_CYCLE_COMPLETE_TEXT, line + 29, sizeof(POMODORO_CYCLE_COMPLETE_TEXT) - 1);
-            POMODORO_CYCLE_COMPLETE_TEXT[sizeof(POMODORO_CYCLE_COMPLETE_TEXT) - 1] = '\0';
-            cycleCompleteMsgFound = TRUE;
-        }
-        
-        /** Early exit once all messages are found */
-        if (timeoutMsgFound && pomodoroTimeoutMsgFound && cycleCompleteMsgFound) {
-            break;
-        }
-    }
-    
-    CloseHandle(hFile);
-    
-    /** Set default values for missing configuration entries */
-    if (!timeoutMsgFound) {
-        strcpy(CLOCK_TIMEOUT_MESSAGE_TEXT, "时间到啦！");
-    }
-    if (!pomodoroTimeoutMsgFound) {
-        strcpy(POMODORO_TIMEOUT_MESSAGE_TEXT, "番茄钟时间到！");
-    }
-    if (!cycleCompleteMsgFound) {
-        strcpy(POMODORO_CYCLE_COMPLETE_TEXT, "所有番茄钟循环完成！");
-    }
+    ReadIniString(INI_SECTION_NOTIFICATION, "POMODORO_CYCLE_COMPLETE_TEXT", "所有番茄钟循环完成！", 
+                 POMODORO_CYCLE_COMPLETE_TEXT, sizeof(POMODORO_CYCLE_COMPLETE_TEXT), config_path);
 }
 
 
@@ -2221,7 +2068,7 @@ void ReadNotificationTimeoutConfig(void) {
     
 
     wchar_t wconfig_path[MAX_PATH];
-    MultiByteToWideChar(CP_ACP, 0, config_path, -1, wconfig_path, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, config_path, -1, wconfig_path, MAX_PATH);
     
     HANDLE hFile = CreateFileW(
         wconfig_path,
@@ -2376,7 +2223,7 @@ void ReadNotificationOpacityConfig(void) {
     
 
     wchar_t wconfig_path[MAX_PATH];
-    MultiByteToWideChar(CP_ACP, 0, config_path, -1, wconfig_path, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, config_path, -1, wconfig_path, MAX_PATH);
     
     HANDLE hFile = CreateFileW(
         wconfig_path,
@@ -3489,6 +3336,7 @@ void WriteConfigKeyValue(const char* key, const char* value) {
            strncmp(key, "CLOCK_USE_24HOUR", 16) == 0 ||
            strncmp(key, "CLOCK_SHOW_SECONDS", 18) == 0 ||
            strncmp(key, "CLOCK_TIME_FORMAT", 17) == 0 ||
+           strncmp(key, "CLOCK_SHOW_MILLISECONDS", 23) == 0 ||
            strncmp(key, "CLOCK_TIME_OPTIONS", 18) == 0 ||
            strncmp(key, "STARTUP_MODE", 12) == 0 ||
            strncmp(key, "CLOCK_TIMEOUT_TEXT", 18) == 0 ||
@@ -3746,6 +3594,42 @@ void WriteConfigTimeFormat(TimeFormatType format) {
 }
 
 /**
+ * @brief Write milliseconds display setting to config file
+ * @param showMilliseconds TRUE to show milliseconds, FALSE to hide
+ */
+void WriteConfigShowMilliseconds(BOOL showMilliseconds) {
+    CLOCK_SHOW_MILLISECONDS = showMilliseconds;
+    WriteConfigKeyValue("CLOCK_SHOW_MILLISECONDS", showMilliseconds ? "TRUE" : "FALSE");
+}
+
+/**
+ * @brief Get appropriate timer interval based on milliseconds display setting
+ * @return Timer interval in milliseconds (1ms if showing milliseconds, 1000ms otherwise)
+ */
+UINT GetTimerInterval(void) {
+    /** Check if we're in milliseconds preview mode */
+    if (IS_MILLISECONDS_PREVIEWING && PREVIEW_SHOW_MILLISECONDS) {
+        return 1;  /** Use 1ms for smooth preview */
+    }
+    
+    /** Use actual setting */
+    return CLOCK_SHOW_MILLISECONDS ? 1 : 1000;
+}
+
+/**
+ * @brief Reset timer with appropriate interval based on milliseconds display setting
+ * @param hwnd Window handle
+ */
+void ResetTimerWithInterval(HWND hwnd) {
+    KillTimer(hwnd, 1);
+    SetTimer(hwnd, 1, GetTimerInterval(), NULL);
+    
+    /** Initialize millisecond timing when timer restarts */
+    extern void ResetTimerMilliseconds(void);
+    ResetTimerMilliseconds();
+}
+
+/**
  * @brief Force flush configuration changes to disk immediately
  * Ensures all pending configuration writes are committed to the config file
  */
@@ -3755,7 +3639,7 @@ void FlushConfigToDisk(void) {
     
     /** Convert to wide character for Windows API */
     wchar_t wconfig_path[MAX_PATH];
-    MultiByteToWideChar(CP_ACP, 0, config_path, -1, wconfig_path, MAX_PATH);
+    MultiByteToWideChar(CP_UTF8, 0, config_path, -1, wconfig_path, MAX_PATH);
     
     /** Force flush file system buffers to ensure immediate disk write */
     HANDLE hFile = CreateFileW(wconfig_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 

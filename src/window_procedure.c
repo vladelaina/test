@@ -46,6 +46,9 @@ extern wchar_t inputText[256];
 extern int elapsed_time;
 extern int message_shown;
 extern TimeFormatType CLOCK_TIME_FORMAT;
+extern BOOL CLOCK_SHOW_MILLISECONDS;
+extern BOOL IS_MILLISECONDS_PREVIEWING;
+extern BOOL PREVIEW_SHOW_MILLISECONDS;
 
 extern void ShowNotification(HWND hwnd, const wchar_t* message);
 extern void PauseMediaPlayback(void);
@@ -125,6 +128,10 @@ INT_PTR CALLBACK InputBoxProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
             SendDlgItemMessageW(hwndDlg, IDC_EDIT_INPUT, EM_SETSEL, 0, -1);
             
             SetFocus(GetDlgItem(hwndDlg, IDC_EDIT_INPUT));
+            
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
+            
             return FALSE;
         }
         
@@ -700,7 +707,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                             /** Start countdown display and timer */
                             ShowWindow(hwnd, SW_SHOW);
                             InvalidateRect(hwnd, NULL, TRUE);
-                            SetTimer(hwnd, 1, 1000, NULL);
+                            ResetTimerWithInterval(hwnd);
                             break;
                         } else {
                             /** Invalid input: show error dialog */
@@ -742,7 +749,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                             
                             ShowWindow(hwnd, SW_SHOW);
                             InvalidateRect(hwnd, NULL, TRUE);
-                            SetTimer(hwnd, 1, 1000, NULL);
+                            ResetTimerWithInterval(hwnd);
                         }
                     }
                     break;
@@ -781,7 +788,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 
                                 ShowWindow(hwnd, SW_SHOW);
                                 InvalidateRect(hwnd, NULL, TRUE);
-                                SetTimer(hwnd, 1, 1000, NULL);
+                                ResetTimerWithInterval(hwnd);
                             }
                         }
                         return 0;
@@ -1140,7 +1147,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                     /** Complete reset: show window, restart timer, refresh display */
                     ShowWindow(hwnd, SW_SHOW);
                     
-                    SetTimer(hwnd, 1, 1000, NULL);
+                    ResetTimerWithInterval(hwnd);
                     
                     SendMessage(hwnd, WM_SETREDRAW, TRUE, 0);
                     RedrawWindow(hwnd, NULL, NULL, 
@@ -1322,6 +1329,14 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                     break;
                 }
                 
+                case CLOCK_IDM_TIME_FORMAT_SHOW_MILLISECONDS: {
+                    WriteConfigShowMilliseconds(!CLOCK_SHOW_MILLISECONDS);
+                    /** Reset timer with new interval based on milliseconds display setting */
+                    ResetTimerWithInterval(hwnd);
+                    InvalidateRect(hwnd, NULL, TRUE);
+                    break;
+                }
+                
                 /** Reset countdown timer to initial state */
                 case CLOCK_IDM_COUNTDOWN_RESET: {
                     extern void StopNotificationSound(void);
@@ -1336,8 +1351,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                     extern void ResetTimer(void);
                     ResetTimer();
                     
-                    KillTimer(hwnd, 1);
-                    SetTimer(hwnd, 1, 1000, NULL);
+                    ResetTimerWithInterval(hwnd);
                     
                     InvalidateRect(hwnd, NULL, TRUE);
                     
@@ -1446,7 +1460,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                         CLOCK_TOTAL_TIME = 0;
                         message_shown = 0;
 
-                        SetTimer(hwnd, 1, 1000, NULL); 
+                        ResetTimerWithInterval(hwnd); 
                     }
                     InvalidateRect(hwnd, NULL, TRUE);
                     break;
@@ -1633,7 +1647,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                         
                         elapsed_time = 0;
                         KillTimer(hwnd, 1);
-                        SetTimer(hwnd, 1, 1000, NULL);
+                        ResetTimerWithInterval(hwnd);
                     }
                     InvalidateRect(hwnd, NULL, TRUE);
                     break;
@@ -1651,7 +1665,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                         countup_elapsed_time = 0;
                         CLOCK_SHOW_CURRENT_TIME = FALSE;
                         KillTimer(hwnd, 1);
-                        SetTimer(hwnd, 1, 1000, NULL);
+                        ResetTimerWithInterval(hwnd);
                     } else {
                         /** Toggle pause state if already counting up */
                         CLOCK_IS_PAUSED = !CLOCK_IS_PAUSED;
@@ -1826,7 +1840,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                     CLOCK_TIMEOUT_ACTION = TIMEOUT_ACTION_MESSAGE;
                     
                     KillTimer(hwnd, 1);
-                    SetTimer(hwnd, 1, 1000, NULL);
+                    ResetTimerWithInterval(hwnd);
                     
                     elapsed_time = 0;
                     message_shown = FALSE;
@@ -1922,7 +1936,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                         CLOCK_TOTAL_TIME == POMODORO_SHORT_BREAK || 
                         CLOCK_TOTAL_TIME == POMODORO_LONG_BREAK) {
                         KillTimer(hwnd, 1);
-                        SetTimer(hwnd, 1, 1000, NULL);
+                        ResetTimerWithInterval(hwnd);
                     }
                     
                     InvalidateRect(hwnd, NULL, TRUE);
@@ -1965,16 +1979,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                 case CLOCK_IDM_SLEEP: {
                     CLOCK_TIMEOUT_ACTION = TIMEOUT_ACTION_SLEEP;
                     WriteConfigTimeoutAction("SLEEP");
-                    break;
-                }
-                case CLOCK_IDM_RUN_COMMAND: {
-                    CLOCK_TIMEOUT_ACTION = TIMEOUT_ACTION_RUN_COMMAND;
-                    WriteConfigTimeoutAction("RUN_COMMAND");
-                    break;
-                }
-                case CLOCK_IDM_HTTP_REQUEST: {
-                    CLOCK_TIMEOUT_ACTION = TIMEOUT_ACTION_HTTP_REQUEST;
-                    WriteConfigTimeoutAction("HTTP_REQUEST");
                     break;
                 }
                 
@@ -2210,43 +2214,71 @@ refresh_window:
                 /** Handle time format preview on hover */
                 if (menuItem == CLOCK_IDM_TIME_FORMAT_DEFAULT ||
                     menuItem == CLOCK_IDM_TIME_FORMAT_ZERO_PADDED ||
-                    menuItem == CLOCK_IDM_TIME_FORMAT_FULL_PADDED) {
+                    menuItem == CLOCK_IDM_TIME_FORMAT_FULL_PADDED ||
+                    menuItem == CLOCK_IDM_TIME_FORMAT_SHOW_MILLISECONDS) {
                     
-                    TimeFormatType previewFormat = TIME_FORMAT_DEFAULT;
-                    switch (menuItem) {
-                        case CLOCK_IDM_TIME_FORMAT_DEFAULT:
-                            previewFormat = TIME_FORMAT_DEFAULT;
-                            break;
-                        case CLOCK_IDM_TIME_FORMAT_ZERO_PADDED:
-                            previewFormat = TIME_FORMAT_ZERO_PADDED;
-                            break;
-                        case CLOCK_IDM_TIME_FORMAT_FULL_PADDED:
-                            previewFormat = TIME_FORMAT_FULL_PADDED;
-                            break;
+                    if (menuItem == CLOCK_IDM_TIME_FORMAT_SHOW_MILLISECONDS) {
+                        /** Handle milliseconds preview */
+                        PREVIEW_SHOW_MILLISECONDS = !CLOCK_SHOW_MILLISECONDS;
+                        IS_MILLISECONDS_PREVIEWING = TRUE;
+                        
+                        /** Adjust timer frequency for smooth preview */
+                        ResetTimerWithInterval(hwnd);
+                        
+                        InvalidateRect(hwnd, NULL, TRUE);
+                        return 0;
+                    } else {
+                        /** Handle format preview */
+                        TimeFormatType previewFormat = TIME_FORMAT_DEFAULT;
+                        switch (menuItem) {
+                            case CLOCK_IDM_TIME_FORMAT_DEFAULT:
+                                previewFormat = TIME_FORMAT_DEFAULT;
+                                break;
+                            case CLOCK_IDM_TIME_FORMAT_ZERO_PADDED:
+                                previewFormat = TIME_FORMAT_ZERO_PADDED;
+                                break;
+                            case CLOCK_IDM_TIME_FORMAT_FULL_PADDED:
+                                previewFormat = TIME_FORMAT_FULL_PADDED;
+                                break;
+                        }
+                        
+                        PREVIEW_TIME_FORMAT = previewFormat;
+                        IS_TIME_FORMAT_PREVIEWING = TRUE;
+                        InvalidateRect(hwnd, NULL, TRUE);
+                        return 0;
                     }
-                    
-                    PREVIEW_TIME_FORMAT = previewFormat;
-                    IS_TIME_FORMAT_PREVIEWING = TRUE;
-                    InvalidateRect(hwnd, NULL, TRUE);
-                    return 0;
                 }
                 
                 /** Clear preview if no matching item found */
-                if (IS_PREVIEWING || IS_COLOR_PREVIEWING || IS_TIME_FORMAT_PREVIEWING) {
+                if (IS_PREVIEWING || IS_COLOR_PREVIEWING || IS_TIME_FORMAT_PREVIEWING || IS_MILLISECONDS_PREVIEWING) {
                     if (IS_PREVIEWING) {
                         CancelFontPreview();
                     }
                     IS_COLOR_PREVIEWING = FALSE;
                     IS_TIME_FORMAT_PREVIEWING = FALSE;
+                    
+                    /** Reset timer frequency when exiting milliseconds preview */
+                    if (IS_MILLISECONDS_PREVIEWING) {
+                        IS_MILLISECONDS_PREVIEWING = FALSE;
+                        ResetTimerWithInterval(hwnd);
+                    }
+                    
                     InvalidateRect(hwnd, NULL, TRUE);
                 }
             } else if (flags & MF_POPUP) {
-                if (IS_PREVIEWING || IS_COLOR_PREVIEWING || IS_TIME_FORMAT_PREVIEWING) {
+                if (IS_PREVIEWING || IS_COLOR_PREVIEWING || IS_TIME_FORMAT_PREVIEWING || IS_MILLISECONDS_PREVIEWING) {
                     if (IS_PREVIEWING) {
                         CancelFontPreview();
                     }
                     IS_COLOR_PREVIEWING = FALSE;
                     IS_TIME_FORMAT_PREVIEWING = FALSE;
+                    
+                    /** Reset timer frequency when exiting milliseconds preview */
+                    if (IS_MILLISECONDS_PREVIEWING) {
+                        IS_MILLISECONDS_PREVIEWING = FALSE;
+                        ResetTimerWithInterval(hwnd);
+                    }
+                    
                     InvalidateRect(hwnd, NULL, TRUE);
                 }
             }
@@ -2255,12 +2287,18 @@ refresh_window:
         
         /** Menu loop exit cleanup */
         case WM_EXITMENULOOP: {
-            if (IS_PREVIEWING || IS_COLOR_PREVIEWING || IS_TIME_FORMAT_PREVIEWING) {
+            if (IS_PREVIEWING || IS_COLOR_PREVIEWING || IS_TIME_FORMAT_PREVIEWING || IS_MILLISECONDS_PREVIEWING) {
                 if (IS_PREVIEWING) {
                     CancelFontPreview();
                 }
                 IS_COLOR_PREVIEWING = FALSE;
                 IS_TIME_FORMAT_PREVIEWING = FALSE;
+                
+                /** Reset timer frequency when exiting milliseconds preview */
+                if (IS_MILLISECONDS_PREVIEWING) {
+                    IS_MILLISECONDS_PREVIEWING = FALSE;
+                    ResetTimerWithInterval(hwnd);
+                }
                 InvalidateRect(hwnd, NULL, TRUE);
             }
             break;
@@ -2357,7 +2395,7 @@ refresh_window:
                         CLOCK_IS_PAUSED = FALSE;
                         
                         KillTimer(hwnd, 1);
-                        SetTimer(hwnd, 1, 1000, NULL);
+                        ResetTimerWithInterval(hwnd);
                         
                         InvalidateRect(hwnd, NULL, TRUE);
                     }
@@ -2429,6 +2467,8 @@ void AddMenuItem(HMENU hMenu, UINT id, const wchar_t* text, BOOL isEnabled);
 
 void ModifyMenuItemText(HMENU hMenu, UINT id, const wchar_t* text);
 
+
+
 /**
  * @brief Toggle between timer display and current time display
  * @param hwnd Main window handle
@@ -2444,8 +2484,7 @@ void ToggleShowTimeMode(HWND hwnd) {
     if (!CLOCK_SHOW_CURRENT_TIME) {
         CLOCK_SHOW_CURRENT_TIME = TRUE;
         
-        KillTimer(hwnd, 1);
-        SetTimer(hwnd, 1, 100, NULL);
+        ResetTimerWithInterval(hwnd);
         
         InvalidateRect(hwnd, NULL, TRUE);
     }
@@ -2474,8 +2513,7 @@ void StartCountUp(HWND hwnd) {
     CLOCK_IS_PAUSED = FALSE;
     
     if (wasShowingTime) {
-        KillTimer(hwnd, 1);
-        SetTimer(hwnd, 1, 1000, NULL);
+        ResetTimerWithInterval(hwnd);
     }
     
     InvalidateRect(hwnd, NULL, TRUE);
@@ -2508,10 +2546,11 @@ void StartDefaultCountDown(HWND hwnd) {
         CLOCK_TOTAL_TIME = CLOCK_DEFAULT_START_TIME;
         countdown_elapsed_time = 0;
         CLOCK_IS_PAUSED = FALSE;
+        ResetMillisecondAccumulator();  /** Reset millisecond timing on new countdown */
         
         if (wasShowingTime) {
             KillTimer(hwnd, 1);
-            SetTimer(hwnd, 1, 1000, NULL);
+            ResetTimerWithInterval(hwnd);
         }
             } else {
             /** Prompt for time input if no default set */
@@ -2599,8 +2638,30 @@ void TogglePauseResume(HWND hwnd) {
     extern void StopNotificationSound(void);
     StopNotificationSound();
     
-    if (!CLOCK_SHOW_CURRENT_TIME) {
+    if (!CLOCK_SHOW_CURRENT_TIME && (CLOCK_COUNT_UP || CLOCK_TOTAL_TIME > 0)) {
+        if (!CLOCK_IS_PAUSED) {
+            /** About to pause: save current milliseconds first */
+            PauseTimerMilliseconds();
+        }
+        
         CLOCK_IS_PAUSED = !CLOCK_IS_PAUSED;
+        
+        if (CLOCK_IS_PAUSED) {
+            /** Record pause timestamp and stop updates */
+            CLOCK_LAST_TIME_UPDATE = time(NULL);
+            KillTimer(hwnd, 1);
+            
+            extern BOOL PauseNotificationSound(void);
+            PauseNotificationSound();
+        } else {
+            /** Resume timer updates and notification sounds */
+            ResetMillisecondAccumulator();  /** Reset millisecond timing on resume */
+            SetTimer(hwnd, 1, GetTimerInterval(), NULL);
+            
+            extern BOOL ResumeNotificationSound(void);
+            ResumeNotificationSound();
+        }
+        
         InvalidateRect(hwnd, NULL, TRUE);
     }
 }
@@ -2631,6 +2692,7 @@ void RestartCurrentTimer(HWND hwnd) {
             elapsed_time = 0;
         }
         CLOCK_IS_PAUSED = FALSE;
+        ResetMillisecondAccumulator();  /** Reset millisecond timing on restart */
         InvalidateRect(hwnd, NULL, TRUE);
     }
 }
@@ -2665,10 +2727,11 @@ void StartQuickCountdown1(HWND hwnd) {
         CLOCK_TOTAL_TIME = time_options[0];
         countdown_elapsed_time = 0;
         CLOCK_IS_PAUSED = FALSE;
+        ResetMillisecondAccumulator();  /** Reset millisecond timing on new countdown */
         
         if (wasShowingTime) {
             KillTimer(hwnd, 1);
-            SetTimer(hwnd, 1, 1000, NULL);
+            ResetTimerWithInterval(hwnd);
         }
         
         InvalidateRect(hwnd, NULL, TRUE);
@@ -2707,10 +2770,11 @@ void StartQuickCountdown2(HWND hwnd) {
         CLOCK_TOTAL_TIME = time_options[1];
         countdown_elapsed_time = 0;
         CLOCK_IS_PAUSED = FALSE;
+        ResetMillisecondAccumulator();  /** Reset millisecond timing on new countdown */
         
         if (wasShowingTime) {
             KillTimer(hwnd, 1);
-            SetTimer(hwnd, 1, 1000, NULL);
+            ResetTimerWithInterval(hwnd);
         }
         
         InvalidateRect(hwnd, NULL, TRUE);
@@ -2749,10 +2813,11 @@ void StartQuickCountdown3(HWND hwnd) {
         CLOCK_TOTAL_TIME = time_options[2];
         countdown_elapsed_time = 0;
         CLOCK_IS_PAUSED = FALSE;
+        ResetMillisecondAccumulator();  /** Reset millisecond timing on new countdown */
         
         if (wasShowingTime) {
             KillTimer(hwnd, 1);
-            SetTimer(hwnd, 1, 1000, NULL);
+            ResetTimerWithInterval(hwnd);
         }
         
         InvalidateRect(hwnd, NULL, TRUE);
@@ -2796,10 +2861,11 @@ void StartQuickCountdownByIndex(HWND hwnd, int index) {
         CLOCK_TOTAL_TIME = time_options[zeroBased];
         countdown_elapsed_time = 0;
         CLOCK_IS_PAUSED = FALSE;
+        ResetMillisecondAccumulator();  /** Reset millisecond timing on new countdown */
 
         if (wasShowingTime) {
             KillTimer(hwnd, 1);
-            SetTimer(hwnd, 1, 1000, NULL);
+            ResetTimerWithInterval(hwnd);
         }
 
         InvalidateRect(hwnd, NULL, TRUE);

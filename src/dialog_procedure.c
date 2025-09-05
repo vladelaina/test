@@ -20,12 +20,37 @@
 #include "../include/window_procedure.h"
 #include "../include/hotkey.h"
 #include "../include/dialog_language.h"
+#include "../include/markdown_parser.h"
 
 /** @brief Draw color selection button with custom appearance */
 static void DrawColorSelectButton(HDC hdc, HWND hwnd);
 
 /** @brief Global input text buffer for dialog operations */
 extern wchar_t inputText[256];
+
+/**
+ * @brief Structure for individual link control data
+ */
+typedef struct {
+    int controlId;
+    const wchar_t* textCN;
+    const wchar_t* textEN; 
+    const wchar_t* url;
+} AboutLinkInfo;
+
+/**
+ * @brief About dialog link information
+ */
+static AboutLinkInfo g_aboutLinkInfos[] = {
+    {IDC_CREDIT_LINK, L"特别感谢猫屋敷梨梨Official提供的图标", L"Special thanks to Neko House Lili Official for the icon", L"https://space.bilibili.com/26087398"},
+    {IDC_CREDITS, L"鸣谢", L"Credits", L"https://vladelaina.github.io/Catime/#thanks"},
+    {IDC_BILIBILI_LINK, L"BiliBili", L"BiliBili", L"https://space.bilibili.com/1862395225"},
+    {IDC_GITHUB_LINK, L"GitHub", L"GitHub", L"https://github.com/vladelaina/Catime"},
+    {IDC_COPYRIGHT_LINK, L"版权声明", L"Copyright Notice", L"https://github.com/vladelaina/Catime#️copyright-notice"},
+    {IDC_SUPPORT, L"支持", L"Support", L"https://vladelaina.github.io/Catime/support.html"}
+};
+
+static const int g_aboutLinkInfoCount = sizeof(g_aboutLinkInfos) / sizeof(g_aboutLinkInfos[0]);
 
 #define MAX_POMODORO_TIMES 10
 extern int POMODORO_TIMES[MAX_POMODORO_TIMES];
@@ -97,6 +122,45 @@ LRESULT APIENTRY EditSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     return CallWindowProc(wpOrigEditProc, hwnd, msg, wParam, lParam);
 }
 
+/**
+ * @brief Move dialog to the center of the primary screen
+ * @param hwndDlg Dialog window handle
+ */
+void MoveDialogToPrimaryScreen(HWND hwndDlg) {
+    if (!hwndDlg || !IsWindow(hwndDlg)) {
+        return;
+    }
+    
+    // Get primary monitor info
+    HMONITOR hPrimaryMonitor = MonitorFromPoint((POINT){0, 0}, MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFO mi = {0};
+    mi.cbSize = sizeof(MONITORINFO);
+    
+    if (!GetMonitorInfo(hPrimaryMonitor, &mi)) {
+        return;
+    }
+    
+    // Get dialog dimensions
+    RECT dialogRect;
+    if (!GetWindowRect(hwndDlg, &dialogRect)) {
+        return;
+    }
+    
+    int dialogWidth = dialogRect.right - dialogRect.left;
+    int dialogHeight = dialogRect.bottom - dialogRect.top;
+    
+    // Calculate center position on primary monitor
+    int primaryWidth = mi.rcMonitor.right - mi.rcMonitor.left;
+    int primaryHeight = mi.rcMonitor.bottom - mi.rcMonitor.top;
+    
+    int newX = mi.rcMonitor.left + (primaryWidth - dialogWidth) / 2;
+    int newY = mi.rcMonitor.top + (primaryHeight - dialogHeight) / 2;
+    
+    // Move dialog to center of primary screen
+    SetWindowPos(hwndDlg, HWND_TOPMOST, newX, newY, 0, 0, 
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
 INT_PTR CALLBACK ErrorDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 
 /**
@@ -126,6 +190,10 @@ INT_PTR CALLBACK ErrorDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
                 GetLocalizedString(L"输入格式无效，请重新输入。", L"Invalid input format, please try again."));
 
             SetWindowTextW(hwndDlg, GetLocalizedString(L"错误", L"Error"));
+            
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
+            
             return TRUE;
 
         case WM_COMMAND:
@@ -158,8 +226,9 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
 
             g_hwndInputDialog = hwndDlg;
 
-            /** Set dialog as topmost and create custom brushes for styling */
+            /** Set dialog as topmost and move to primary screen */
             SetWindowPos(hwndDlg, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            MoveDialogToPrimaryScreen(hwndDlg);
             hBackgroundBrush = CreateSolidBrush(RGB(0xF3, 0xF3, 0xF3));
             hEditBrush = CreateSolidBrush(RGB(0xFF, 0xFF, 0xFF));
             hButtonBrush = CreateSolidBrush(RGB(0xFD, 0xFD, 0xFD));
@@ -595,14 +664,6 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
                 SetDlgItemTextW(hwndDlg, IDC_VERSION_TEXT, versionText);
             }
 
-            /** Set localized text for clickable links */
-            SetDlgItemTextW(hwndDlg, IDC_CREDIT_LINK, GetLocalizedString(L"特别感谢猫屋敷梨梨Official提供的图标", L"Special thanks to Neko House Lili Official for the icon"));
-            SetDlgItemTextW(hwndDlg, IDC_CREDITS, GetLocalizedString(L"鸣谢", L"Credits"));
-            SetDlgItemTextW(hwndDlg, IDC_BILIBILI_LINK, GetLocalizedString(L"BiliBili", L"BiliBili"));
-            SetDlgItemTextW(hwndDlg, IDC_GITHUB_LINK, GetLocalizedString(L"GitHub", L"GitHub"));
-            SetDlgItemTextW(hwndDlg, IDC_COPYRIGHT_LINK, GetLocalizedString(L"版权声明", L"Copyright Notice"));
-            SetDlgItemTextW(hwndDlg, IDC_SUPPORT, GetLocalizedString(L"支持", L"Support"));
-
             /** Parse compile-time build date and time for display */
             char month[4];
             int day, year, hour, min, sec;
@@ -626,6 +687,15 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 
             SetDlgItemTextW(hwndDlg, IDC_BUILD_DATE, timeStr);
 
+            /** Set localized text for clickable links (using our link info structure) */
+            for (int i = 0; i < g_aboutLinkInfoCount; i++) {
+                const wchar_t* linkText = GetLocalizedString(g_aboutLinkInfos[i].textCN, g_aboutLinkInfos[i].textEN);
+                SetDlgItemTextW(hwndDlg, g_aboutLinkInfos[i].controlId, linkText);
+            }
+
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
+
             return TRUE;
         }
 
@@ -644,63 +714,59 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
                 g_hwndAboutDlg = NULL;
                 return TRUE;
             }
-            /** Open icon credit link */
-            if (LOWORD(wParam) == IDC_CREDIT_LINK) {
-                ShellExecuteW(NULL, L"open", L"https://space.bilibili.com/26087398", NULL, NULL, SW_SHOWNORMAL);
-                return TRUE;
-            }
-            /** Open BiliBili profile */
-            if (LOWORD(wParam) == IDC_BILIBILI_LINK) {
-                ShellExecuteW(NULL, L"open", URL_BILIBILI_SPACE, NULL, NULL, SW_SHOWNORMAL);
-                return TRUE;
-            }
-            /** Open GitHub repository */
-            if (LOWORD(wParam) == IDC_GITHUB_LINK) {
-                ShellExecuteW(NULL, L"open", URL_GITHUB_REPO, NULL, NULL, SW_SHOWNORMAL);
-                return TRUE;
-            }
-            /** Open credits page */
-            if (LOWORD(wParam) == IDC_CREDITS) {
-                ShellExecuteW(NULL, L"open", L"https://vladelaina.github.io/Catime/#thanks", NULL, NULL, SW_SHOWNORMAL);
-                return TRUE;
-            }
-            /** Open support page */
-            if (LOWORD(wParam) == IDC_SUPPORT) {
-                ShellExecuteW(NULL, L"open", L"https://vladelaina.github.io/Catime/support.html", NULL, NULL, SW_SHOWNORMAL);
-                return TRUE;
-            }
-            /** Open copyright notice */
-            if (LOWORD(wParam) == IDC_COPYRIGHT_LINK) {
-                ShellExecuteW(NULL, L"open", L"https://github.com/vladelaina/Catime#️copyright-notice", NULL, NULL, SW_SHOWNORMAL);
-                return TRUE;
+            
+            /** Handle clicks on link controls */
+            for (int i = 0; i < g_aboutLinkInfoCount; i++) {
+                if (LOWORD(wParam) == g_aboutLinkInfos[i].controlId && HIWORD(wParam) == STN_CLICKED) {
+                    ShellExecuteW(NULL, L"open", g_aboutLinkInfos[i].url, NULL, NULL, SW_SHOWNORMAL);
+                    return TRUE;
+                }
             }
             break;
+
+        case WM_DRAWITEM: {
+            LPDRAWITEMSTRUCT lpDrawItem = (LPDRAWITEMSTRUCT)lParam;
+            
+            /** Check if this is one of our link controls */
+            for (int i = 0; i < g_aboutLinkInfoCount; i++) {
+                if (lpDrawItem->CtlID == g_aboutLinkInfos[i].controlId) {
+                    /** Render link control with orange color */
+                    RECT rect = lpDrawItem->rcItem;
+                    HDC hdc = lpDrawItem->hDC;
+                    
+                    // Set background
+                    FillRect(hdc, &rect, GetSysColorBrush(COLOR_3DFACE));
+                    
+                    // Get control text
+                    wchar_t text[256];
+                    GetDlgItemTextW(hwndDlg, g_aboutLinkInfos[i].controlId, text, sizeof(text)/sizeof(text[0]));
+                    
+                    // Set font
+                    HFONT hFont = (HFONT)SendMessage(hwndDlg, WM_GETFONT, 0, 0);
+                    if (!hFont) {
+                        hFont = GetStockObject(DEFAULT_GUI_FONT);
+                    }
+                    HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+                    
+                    // Set orange color for links (same as original)
+                    SetTextColor(hdc, 0x00D26919);
+                    SetBkMode(hdc, TRANSPARENT);
+                    
+                    // Draw text
+                    DrawTextW(hdc, text, -1, &rect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                    
+                    SelectObject(hdc, hOldFont);
+                    return TRUE;
+                }
+            }
+            break;
+        }
 
         case WM_CLOSE:
             /** Close dialog and clean up */
             EndDialog(hwndDlg, 0);
             g_hwndAboutDlg = NULL;
             return TRUE;
-
-        case WM_CTLCOLORSTATIC:
-        /** Custom coloring for clickable link controls */
-        {
-            HDC hdc = (HDC)wParam;
-            HWND hwndCtl = (HWND)lParam;
-            
-            /** Apply orange color to link controls */
-            if (GetDlgCtrlID(hwndCtl) == IDC_CREDIT_LINK || 
-                GetDlgCtrlID(hwndCtl) == IDC_BILIBILI_LINK ||
-                GetDlgCtrlID(hwndCtl) == IDC_GITHUB_LINK ||
-                GetDlgCtrlID(hwndCtl) == IDC_CREDITS ||
-                GetDlgCtrlID(hwndCtl) == IDC_COPYRIGHT_LINK ||
-                GetDlgCtrlID(hwndCtl) == IDC_SUPPORT) {
-                SetTextColor(hdc, 0x00D26919);
-                SetBkMode(hdc, TRANSPARENT);
-                return (INT_PTR)GetStockObject(NULL_BRUSH);
-            }
-            break;
-        }
     }
     return FALSE;
 }
@@ -886,6 +952,9 @@ INT_PTR CALLBACK PomodoroLoopDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
             wpOrigLoopEditProc = (WNDPROC)SetWindowLongPtr(hwndEdit, GWLP_WNDPROC, 
                                                           (LONG_PTR)LoopEditSubclassProc);
             
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
+            
             return FALSE;
         }
 
@@ -1010,6 +1079,9 @@ INT_PTR CALLBACK WebsiteDialogProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
             /** Set focus and select all text for easy editing */
             SetFocus(hwndEdit);
             SendMessage(hwndEdit, EM_SETSEL, 0, -1);
+            
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
             
             return FALSE;
         }
@@ -1192,6 +1264,9 @@ INT_PTR CALLBACK PomodoroComboDialogProc(HWND hwndDlg, UINT msg, WPARAM wParam, 
             /** Set focus and select all text for easy editing */
             SetFocus(hwndEdit);
             SendMessage(hwndEdit, EM_SETSEL, 0, -1);
+            
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
             
             return FALSE;
         }
@@ -1416,6 +1491,9 @@ INT_PTR CALLBACK NotificationMessagesDlgProc(HWND hwndDlg, UINT msg, WPARAM wPar
         case WM_INITDIALOG: {
             /** Make dialog topmost for visibility */
             SetWindowPos(hwndDlg, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
 
             /** Create custom brushes for dialog appearance */
             hBackgroundBrush = CreateSolidBrush(RGB(0xF3, 0xF3, 0xF3));
@@ -1587,6 +1665,9 @@ INT_PTR CALLBACK NotificationDisplayDlgProc(HWND hwndDlg, UINT msg, WPARAM wPara
         case WM_INITDIALOG: {
             /** Make dialog topmost for visibility */
             SetWindowPos(hwndDlg, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
             
             /** Create custom brushes for dialog appearance */
             hBackgroundBrush = CreateSolidBrush(RGB(0xF3, 0xF3, 0xF3));
@@ -1981,6 +2062,9 @@ INT_PTR CALLBACK NotificationSettingsDlgProc(HWND hwndDlg, UINT msg, WPARAM wPar
             /** Store dialog handle for callback reference */
             g_hwndNotificationSettingsDialog = hwndDlg;
             
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
+            
             return TRUE;
         }
         
@@ -2338,120 +2422,11 @@ void ShowNotificationSettingsDialog(HWND hwndParent) {
 }
 
 /**
- * @brief Structure to store parsed markdown links
- */
-typedef struct {
-    wchar_t* linkText;
-    wchar_t* linkUrl;
-    RECT linkRect;
-    int startPos;  // Start position in display text
-    int endPos;    // End position in display text
-} MarkdownLink;
-
-/**
- * @brief Global storage for parsed links and dialog data
+ * @brief Global storage for parsed links and dialog data (Font License)
  */
 static MarkdownLink* g_links = NULL;
 static int g_linkCount = 0;
 static wchar_t* g_displayText = NULL;
-
-/**
- * @brief Parse markdown-style links [text](url) from input text
- * @param input Input text with markdown links
- * @param displayText Output text with links removed
- * @param links Output array of parsed links
- * @param linkCount Output number of links found
- */
-void ParseMarkdownLinks(const wchar_t* input, wchar_t** displayText, MarkdownLink** links, int* linkCount) {
-    if (!input || !displayText || !links || !linkCount) return;
-    
-    int inputLen = wcslen(input);
-    *displayText = (wchar_t*)malloc((inputLen + 1) * sizeof(wchar_t));
-    *links = NULL;
-    *linkCount = 0;
-    
-    if (!*displayText) return;
-    
-    wchar_t* dest = *displayText;
-    const wchar_t* src = input;
-    int linkCapacity = 10;
-    *links = (MarkdownLink*)malloc(linkCapacity * sizeof(MarkdownLink));
-    
-    if (!*links) {
-        free(*displayText);
-        *displayText = NULL;
-        return;
-    }
-    
-    int currentPos = 0;  // Track position in display text for link rectangles
-    
-    while (*src) {
-        if (*src == L'[') {
-            // Found potential link start
-            const wchar_t* linkTextStart = src + 1;
-            const wchar_t* linkTextEnd = wcschr(linkTextStart, L']');
-            
-            if (linkTextEnd && linkTextEnd[1] == L'(' ) {
-                const wchar_t* urlStart = linkTextEnd + 2;
-                const wchar_t* urlEnd = wcschr(urlStart, L')');
-                
-                if (urlEnd) {
-                    // Valid markdown link found
-                    if (*linkCount >= linkCapacity) {
-                        linkCapacity *= 2;
-                        *links = (MarkdownLink*)realloc(*links, linkCapacity * sizeof(MarkdownLink));
-                        if (!*links) return;
-                    }
-                    
-                    MarkdownLink* link = &(*links)[*linkCount];
-                    
-                    // Extract link text
-                    int textLen = linkTextEnd - linkTextStart;
-                    link->linkText = (wchar_t*)malloc((textLen + 1) * sizeof(wchar_t));
-                    wcsncpy(link->linkText, linkTextStart, textLen);
-                    link->linkText[textLen] = L'\0';
-                    
-                    // Extract URL
-                    int urlLen = urlEnd - urlStart;
-                    link->linkUrl = (wchar_t*)malloc((urlLen + 1) * sizeof(wchar_t));
-                    wcsncpy(link->linkUrl, urlStart, urlLen);
-                    link->linkUrl[urlLen] = L'\0';
-                    
-                    // Store start and end position of link in display text
-                    link->startPos = currentPos;
-                    link->endPos = currentPos + textLen;
-                    
-                    // Copy link text to display text
-                    wcsncpy(dest, link->linkText, textLen);
-                    dest += textLen;
-                    currentPos += textLen;
-                    
-                    (*linkCount)++;
-                    src = urlEnd + 1;
-                    continue;
-                }
-            }
-        }
-        
-        *dest++ = *src++;
-        currentPos++;
-    }
-    
-    *dest = L'\0';
-}
-
-/**
- * @brief Free parsed markdown links
- */
-void FreeMarkdownLinks(MarkdownLink* links, int linkCount) {
-    if (!links) return;
-    
-    for (int i = 0; i < linkCount; i++) {
-        free(links[i].linkText);
-        free(links[i].linkUrl);
-    }
-    free(links);
-}
 
 /**
  * @brief Font license agreement dialog procedure
@@ -2481,6 +2456,9 @@ INT_PTR CALLBACK FontLicenseDlgProc(HWND hwndDlg, UINT message, WPARAM wParam, L
             /** Set button text */
             SetDlgItemTextW(hwndDlg, IDC_FONT_LICENSE_AGREE_BTN, GetLocalizedString(L"同意", L"Agree"));
             SetDlgItemTextW(hwndDlg, IDC_FONT_LICENSE_CANCEL_BTN, GetLocalizedString(L"取消", L"Cancel"));
+            
+            /** Move dialog to primary screen */
+            MoveDialogToPrimaryScreen(hwndDlg);
             
             return TRUE;
         }
@@ -2517,12 +2495,9 @@ INT_PTR CALLBACK FontLicenseDlgProc(HWND hwndDlg, UINT message, WPARAM wParam, L
                         GetCursorPos(&pt);
                         ScreenToClient(GetDlgItem(hwndDlg, IDC_FONT_LICENSE_TEXT), &pt);
                         
-                        // Check if click is within any link rectangle
-                        for (int i = 0; i < g_linkCount; i++) {
-                            if (PtInRect(&g_links[i].linkRect, pt)) {
-                                ShellExecuteW(NULL, L"open", g_links[i].linkUrl, NULL, NULL, SW_SHOWNORMAL);
-                                return TRUE;
-                            }
+                        // Handle markdown link click
+                        if (HandleMarkdownClick(g_links, g_linkCount, pt)) {
+                            return TRUE;
                         }
                         // If click is not on a link, do nothing
                     }
@@ -2553,82 +2528,13 @@ INT_PTR CALLBACK FontLicenseDlgProc(HWND hwndDlg, UINT message, WPARAM wParam, L
                     }
                     HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
                     
-                    // Draw text character by character, coloring links blue
+                    // Render markdown text with clickable links
                     RECT drawRect = rect;
                     drawRect.left += 5; // Small margin
                     drawRect.top += 5;
                     
-                    int textLen = wcslen(g_displayText);
-                    int x = drawRect.left;
-                    int y = drawRect.top;
-                    
-                    // Get text metrics for line height
-                    TEXTMETRIC tm;
-                    GetTextMetrics(hdc, &tm);
-                    int lineHeight = tm.tmHeight;
-                    
-                    for (int i = 0; i < textLen; i++) {
-                        wchar_t ch = g_displayText[i];
-                        
-                        // Check if this character is part of a link
-                        BOOL isLink = FALSE;
-                        int linkIndex = -1;
-                        for (int j = 0; j < g_linkCount; j++) {
-                            if (i >= g_links[j].startPos && i < g_links[j].endPos) {
-                                isLink = TRUE;
-                                linkIndex = j;
-                                break;
-                            }
-                        }
-                        
-                        // Set color
-                        if (isLink) {
-                            SetTextColor(hdc, RGB(0, 100, 200)); // Blue for links
-                        } else {
-                            SetTextColor(hdc, GetSysColor(COLOR_WINDOWTEXT)); // Normal text
-                        }
-                        
-                        // Handle newlines
-                        if (ch == L'\n') {
-                            x = drawRect.left;
-                            y += lineHeight;
-                            continue;
-                        }
-                        
-                        // Draw character
-                        TextOutW(hdc, x, y, &ch, 1);
-                        
-                        // Update link rectangle for click detection
-                        if (isLink && linkIndex >= 0) {
-                            SIZE charSize;
-                            GetTextExtentPoint32W(hdc, &ch, 1, &charSize);
-                            
-                            // Initialize or expand link rectangle
-                            if (i == g_links[linkIndex].startPos) {
-                                g_links[linkIndex].linkRect.left = x;
-                                g_links[linkIndex].linkRect.top = y;
-                                g_links[linkIndex].linkRect.right = x + charSize.cx;
-                                g_links[linkIndex].linkRect.bottom = y + lineHeight;
-                            } else {
-                                g_links[linkIndex].linkRect.right = x + charSize.cx;
-                                // Update bottom if link spans multiple lines
-                                if (y + lineHeight > g_links[linkIndex].linkRect.bottom) {
-                                    g_links[linkIndex].linkRect.bottom = y + lineHeight;
-                                }
-                            }
-                        }
-                        
-                        // Move to next character position
-                        SIZE charSize;
-                        GetTextExtentPoint32W(hdc, &ch, 1, &charSize);
-                        x += charSize.cx;
-                        
-                        // Wrap text if needed
-                        if (x > rect.right - 10) {
-                            x = drawRect.left;
-                            y += lineHeight;
-                        }
-                    }
+                    RenderMarkdownText(hdc, g_displayText, g_links, g_linkCount, 
+                                       drawRect, MARKDOWN_DEFAULT_LINK_COLOR, MARKDOWN_DEFAULT_TEXT_COLOR);
                     
                     SelectObject(hdc, hOldFont);
                 }

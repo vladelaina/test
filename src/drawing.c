@@ -19,6 +19,74 @@ extern int elapsed_time;
 /** @brief External time format setting */
 extern TimeFormatType CLOCK_TIME_FORMAT;
 
+/** @brief External milliseconds display setting */
+extern BOOL CLOCK_SHOW_MILLISECONDS;
+
+/** @brief External milliseconds preview variables */
+extern BOOL IS_MILLISECONDS_PREVIEWING;
+extern BOOL PREVIEW_SHOW_MILLISECONDS;
+
+/**
+ * @brief Get current milliseconds component
+ * @return Current milliseconds (0-999)
+ */
+int GetCurrentMilliseconds(void) {
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    return st.wMilliseconds;
+}
+
+/** @brief Timer-based millisecond tracking */
+static DWORD timer_start_tick = 0;
+static BOOL timer_ms_initialized = FALSE;
+static int paused_milliseconds = 0;
+
+/**
+ * @brief Reset timer-based millisecond tracking
+ * Should be called when timer starts, resumes, or resets
+ */
+void ResetTimerMilliseconds(void) {
+    timer_start_tick = GetTickCount();
+    timer_ms_initialized = TRUE;
+    paused_milliseconds = 0;
+}
+
+/**
+ * @brief Save current milliseconds when pausing
+ * Should be called when timer is paused to freeze the display
+ */
+void PauseTimerMilliseconds(void) {
+    if (timer_ms_initialized) {
+        DWORD current_tick = GetTickCount();
+        DWORD elapsed_ms = current_tick - timer_start_tick;
+        paused_milliseconds = (int)(elapsed_ms % 1000);
+    }
+}
+
+/**
+ * @brief Get elapsed milliseconds for timer modes
+ * @return Current milliseconds component for timer display
+ */
+int GetElapsedMillisecondsComponent(void) {
+    /** If timer is paused, return frozen milliseconds */
+    if (CLOCK_IS_PAUSED) {
+        return paused_milliseconds;
+    }
+    
+    /** Initialize timer milliseconds on first call */
+    if (!timer_ms_initialized) {
+        ResetTimerMilliseconds();
+        return 0;
+    }
+    
+    /** Calculate elapsed milliseconds since timer start/resume */
+    DWORD current_tick = GetTickCount();
+    DWORD elapsed_ms = current_tick - timer_start_tick;
+    
+    /** Return just the millisecond component (0-999) */
+    return (int)(elapsed_ms % 1000);
+}
+
 /**
  * @brief Handle window painting with double buffering and text rendering
  * @param hwnd Window handle to paint
@@ -43,10 +111,14 @@ void HandleWindowPaint(HWND hwnd, PAINTSTRUCT *ps) {
 
     /** Format time text based on clock mode */
     if (CLOCK_SHOW_CURRENT_TIME) {
-        /** Display current system time */
-        time_t now = time(NULL);
-        struct tm *tm_info = localtime(&now);
-        int hour = tm_info->tm_hour;
+        /** Display current system time - use GetLocalTime for accurate synchronization */
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        
+        int hour = st.wHour;
+        int minute = st.wMinute;
+        int second = st.wSecond;
+        int milliseconds = st.wMilliseconds;
         
         /** Convert to 12-hour format if needed */
         if (!CLOCK_USE_24HOUR) {
@@ -60,36 +132,77 @@ void HandleWindowPaint(HWND hwnd, PAINTSTRUCT *ps) {
         /** Determine which time format to use (preview or current) */
         TimeFormatType formatToUse = IS_TIME_FORMAT_PREVIEWING ? PREVIEW_TIME_FORMAT : CLOCK_TIME_FORMAT;
         
+        /** Determine whether to show milliseconds (preview or current) */
+        BOOL showMilliseconds = IS_MILLISECONDS_PREVIEWING ? PREVIEW_SHOW_MILLISECONDS : CLOCK_SHOW_MILLISECONDS;
+        
         /** Format with or without seconds */
         if (CLOCK_SHOW_SECONDS) {
-            switch (formatToUse) {
-                case TIME_FORMAT_ZERO_PADDED:
-                    swprintf(time_text, 50, L"%02d:%02d:%02d", 
-                            hour, tm_info->tm_min, tm_info->tm_sec);
-                    break;
-                case TIME_FORMAT_FULL_PADDED:
-                    swprintf(time_text, 50, L"%02d:%02d:%02d", 
-                            hour, tm_info->tm_min, tm_info->tm_sec);
-                    break;
-                default: // TIME_FORMAT_DEFAULT
-                    swprintf(time_text, 50, L"%d:%02d:%02d", 
-                            hour, tm_info->tm_min, tm_info->tm_sec);
-                    break;
+            if (showMilliseconds) {
+                /** Format with seconds and milliseconds */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d.%03d", 
+                                hour, minute, second, milliseconds);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d.%03d", 
+                                hour, minute, second, milliseconds);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d:%02d:%02d.%03d", 
+                                hour, minute, second, milliseconds);
+                        break;
+                }
+            } else {
+                /** Format with seconds only */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d", 
+                                hour, minute, second);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d", 
+                                hour, minute, second);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d:%02d:%02d", 
+                                hour, minute, second);
+                        break;
+                }
             }
         } else {
-            switch (formatToUse) {
-                case TIME_FORMAT_ZERO_PADDED:
-                    swprintf(time_text, 50, L"%02d:%02d", 
-                            hour, tm_info->tm_min);
-                    break;
-                case TIME_FORMAT_FULL_PADDED:
-                    swprintf(time_text, 50, L"%02d:%02d", 
-                            hour, tm_info->tm_min);
-                    break;
-                default: // TIME_FORMAT_DEFAULT
-                    swprintf(time_text, 50, L"%d:%02d", 
-                            hour, tm_info->tm_min);
-                    break;
+            if (showMilliseconds) {
+                /** Format without seconds setting but with milliseconds - show seconds for context */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d.%03d", 
+                                hour, minute, second, milliseconds);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d.%03d", 
+                                hour, minute, second, milliseconds);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d:%02d:%02d.%03d", 
+                                hour, minute, second, milliseconds);
+                        break;
+                }
+            } else {
+                /** Format without seconds and without milliseconds */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d", 
+                                hour, minute);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d", 
+                                hour, minute);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d:%02d", 
+                                hour, minute);
+                        break;
+                }
             }
         }
     } else if (CLOCK_COUNT_UP) {
@@ -101,42 +214,96 @@ void HandleWindowPaint(HWND hwnd, PAINTSTRUCT *ps) {
         /** Determine which time format to use (preview or current) */
         TimeFormatType formatToUse = IS_TIME_FORMAT_PREVIEWING ? PREVIEW_TIME_FORMAT : CLOCK_TIME_FORMAT;
         
+        /** Determine whether to show milliseconds (preview or current) */
+        BOOL showMilliseconds = IS_MILLISECONDS_PREVIEWING ? PREVIEW_SHOW_MILLISECONDS : CLOCK_SHOW_MILLISECONDS;
+        
+        /** Get milliseconds for timer display */
+        int milliseconds = GetElapsedMillisecondsComponent();
+        
         /** Format time with appropriate precision */
         if (hours > 0) {
-            switch (formatToUse) {
-                case TIME_FORMAT_ZERO_PADDED:
-                    swprintf(time_text, 50, L"%02d:%02d:%02d", hours, minutes, seconds);
-                    break;
-                case TIME_FORMAT_FULL_PADDED:
-                    swprintf(time_text, 50, L"%02d:%02d:%02d", hours, minutes, seconds);
-                    break;
-                default: // TIME_FORMAT_DEFAULT
-                    swprintf(time_text, 50, L"%d:%02d:%02d", hours, minutes, seconds);
-                    break;
+            if (showMilliseconds) {
+                /** Format with hours and milliseconds */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+                        break;
+                }
+            } else {
+                /** Format with hours only */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d", hours, minutes, seconds);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d:%02d", hours, minutes, seconds);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d:%02d:%02d", hours, minutes, seconds);
+                        break;
+                }
             }
         } else if (minutes > 0) {
-            switch (formatToUse) {
-                case TIME_FORMAT_ZERO_PADDED:
-                    swprintf(time_text, 50, L"%02d:%02d", minutes, seconds);
-                    break;
-                case TIME_FORMAT_FULL_PADDED:
-                    swprintf(time_text, 50, L"00:%02d:%02d", minutes, seconds);
-                    break;
-                default: // TIME_FORMAT_DEFAULT
-                    swprintf(time_text, 50, L"%d:%02d", minutes, seconds);
-                    break;
+            if (showMilliseconds) {
+                /** Format with minutes and milliseconds */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d.%03d", minutes, seconds, milliseconds);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"00:%02d:%02d.%03d", minutes, seconds, milliseconds);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d:%02d.%03d", minutes, seconds, milliseconds);
+                        break;
+                }
+            } else {
+                /** Format with minutes only */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"%02d:%02d", minutes, seconds);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"00:%02d:%02d", minutes, seconds);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d:%02d", minutes, seconds);
+                        break;
+                }
             }
         } else {
-            switch (formatToUse) {
-                case TIME_FORMAT_ZERO_PADDED:
-                    swprintf(time_text, 50, L"00:%02d", seconds);
-                    break;
-                case TIME_FORMAT_FULL_PADDED:
-                    swprintf(time_text, 50, L"00:00:%02d", seconds);
-                    break;
-                default: // TIME_FORMAT_DEFAULT
-                    swprintf(time_text, 50, L"%d", seconds);
-                    break;
+            if (showMilliseconds) {
+                /** Format with seconds and milliseconds */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"00:%02d.%03d", seconds, milliseconds);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"00:00:%02d.%03d", seconds, milliseconds);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d.%03d", seconds, milliseconds);
+                        break;
+                }
+            } else {
+                /** Format with seconds only */
+                switch (formatToUse) {
+                    case TIME_FORMAT_ZERO_PADDED:
+                        swprintf(time_text, 50, L"00:%02d", seconds);
+                        break;
+                    case TIME_FORMAT_FULL_PADDED:
+                        swprintf(time_text, 50, L"00:00:%02d", seconds);
+                        break;
+                    default: // TIME_FORMAT_DEFAULT
+                        swprintf(time_text, 50, L"%d", seconds);
+                        break;
+                }
             }
         }
     } else {
@@ -163,42 +330,96 @@ void HandleWindowPaint(HWND hwnd, PAINTSTRUCT *ps) {
             /** Determine which time format to use (preview or current) */
             TimeFormatType formatToUse = IS_TIME_FORMAT_PREVIEWING ? PREVIEW_TIME_FORMAT : CLOCK_TIME_FORMAT;
             
+            /** Determine whether to show milliseconds (preview or current) */
+            BOOL showMilliseconds = IS_MILLISECONDS_PREVIEWING ? PREVIEW_SHOW_MILLISECONDS : CLOCK_SHOW_MILLISECONDS;
+            
+            /** Get milliseconds for countdown timer display */
+            int milliseconds = GetElapsedMillisecondsComponent();
+            
             /** Format with appropriate precision */
             if (hours > 0) {
-                switch (formatToUse) {
-                    case TIME_FORMAT_ZERO_PADDED:
-                        swprintf(time_text, 50, L"%02d:%02d:%02d", hours, minutes, seconds);
-                        break;
-                    case TIME_FORMAT_FULL_PADDED:
-                        swprintf(time_text, 50, L"%02d:%02d:%02d", hours, minutes, seconds);
-                        break;
-                    default: // TIME_FORMAT_DEFAULT
-                        swprintf(time_text, 50, L"%d:%02d:%02d", hours, minutes, seconds);
-                        break;
+                if (showMilliseconds) {
+                    /** Format with hours and milliseconds */
+                    switch (formatToUse) {
+                        case TIME_FORMAT_ZERO_PADDED:
+                            swprintf(time_text, 50, L"%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+                            break;
+                        case TIME_FORMAT_FULL_PADDED:
+                            swprintf(time_text, 50, L"%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+                            break;
+                        default: // TIME_FORMAT_DEFAULT
+                            swprintf(time_text, 50, L"%d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+                            break;
+                    }
+                } else {
+                    /** Format with hours only */
+                    switch (formatToUse) {
+                        case TIME_FORMAT_ZERO_PADDED:
+                            swprintf(time_text, 50, L"%02d:%02d:%02d", hours, minutes, seconds);
+                            break;
+                        case TIME_FORMAT_FULL_PADDED:
+                            swprintf(time_text, 50, L"%02d:%02d:%02d", hours, minutes, seconds);
+                            break;
+                        default: // TIME_FORMAT_DEFAULT
+                            swprintf(time_text, 50, L"%d:%02d:%02d", hours, minutes, seconds);
+                            break;
+                    }
                 }
             } else if (minutes > 0) {
-                switch (formatToUse) {
-                    case TIME_FORMAT_ZERO_PADDED:
-                        swprintf(time_text, 50, L"%02d:%02d", minutes, seconds);
-                        break;
-                    case TIME_FORMAT_FULL_PADDED:
-                        swprintf(time_text, 50, L"00:%02d:%02d", minutes, seconds);
-                        break;
-                    default: // TIME_FORMAT_DEFAULT
-                        swprintf(time_text, 50, L"%d:%02d", minutes, seconds);
-                        break;
+                if (showMilliseconds) {
+                    /** Format with minutes and milliseconds */
+                    switch (formatToUse) {
+                        case TIME_FORMAT_ZERO_PADDED:
+                            swprintf(time_text, 50, L"%02d:%02d.%03d", minutes, seconds, milliseconds);
+                            break;
+                        case TIME_FORMAT_FULL_PADDED:
+                            swprintf(time_text, 50, L"00:%02d:%02d.%03d", minutes, seconds, milliseconds);
+                            break;
+                        default: // TIME_FORMAT_DEFAULT
+                            swprintf(time_text, 50, L"%d:%02d.%03d", minutes, seconds, milliseconds);
+                            break;
+                    }
+                } else {
+                    /** Format with minutes only */
+                    switch (formatToUse) {
+                        case TIME_FORMAT_ZERO_PADDED:
+                            swprintf(time_text, 50, L"%02d:%02d", minutes, seconds);
+                            break;
+                        case TIME_FORMAT_FULL_PADDED:
+                            swprintf(time_text, 50, L"00:%02d:%02d", minutes, seconds);
+                            break;
+                        default: // TIME_FORMAT_DEFAULT
+                            swprintf(time_text, 50, L"%d:%02d", minutes, seconds);
+                            break;
+                    }
                 }
             } else {
-                switch (formatToUse) {
-                    case TIME_FORMAT_ZERO_PADDED:
-                        swprintf(time_text, 50, L"00:%02d", seconds);
-                        break;
-                    case TIME_FORMAT_FULL_PADDED:
-                        swprintf(time_text, 50, L"00:00:%02d", seconds);
-                        break;
-                    default: // TIME_FORMAT_DEFAULT
-                        swprintf(time_text, 50, L"%d", seconds);
-                        break;
+                if (showMilliseconds) {
+                    /** Format with seconds and milliseconds */
+                    switch (formatToUse) {
+                        case TIME_FORMAT_ZERO_PADDED:
+                            swprintf(time_text, 50, L"00:%02d.%03d", seconds, milliseconds);
+                            break;
+                        case TIME_FORMAT_FULL_PADDED:
+                            swprintf(time_text, 50, L"00:00:%02d.%03d", seconds, milliseconds);
+                            break;
+                        default: // TIME_FORMAT_DEFAULT
+                            swprintf(time_text, 50, L"%d.%03d", seconds, milliseconds);
+                            break;
+                    }
+                } else {
+                    /** Format with seconds only */
+                    switch (formatToUse) {
+                        case TIME_FORMAT_ZERO_PADDED:
+                            swprintf(time_text, 50, L"00:%02d", seconds);
+                            break;
+                        case TIME_FORMAT_FULL_PADDED:
+                            swprintf(time_text, 50, L"00:00:%02d", seconds);
+                            break;
+                        default: // TIME_FORMAT_DEFAULT
+                            swprintf(time_text, 50, L"%d", seconds);
+                            break;
+                    }
                 }
             }
         }

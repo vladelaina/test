@@ -379,13 +379,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
 
         LOG_INFO("Setting main timer...");
-        if (SetTimer(hwnd, 1, 1000, NULL) == 0) {
+        /** Use appropriate timer interval based on milliseconds display setting from config */
+        extern UINT GetTimerInterval(void);
+        UINT interval = GetTimerInterval();
+        if (SetTimer(hwnd, 1, interval, NULL) == 0) {
             DWORD timerError = GetLastError();
             LOG_ERROR("Timer creation failed, error code: %lu", timerError);
             MessageBoxW(NULL, L"Timer Creation Failed!", L"Error", MB_ICONEXCLAMATION | MB_OK);
             return 0;
         }
-        LOG_INFO("Timer set successfully");
+        LOG_INFO("Timer set successfully with %ums interval", interval);
+        
+        /** Initialize millisecond timing for display */
+        extern void ResetTimerMilliseconds(void);
+        ResetTimerMilliseconds();
 
         LOG_INFO("Setting font path check timer...");
         if (SetTimer(hwnd, 1003, 2000, NULL) == 0) {
@@ -393,6 +400,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         } else {
             LOG_INFO("Font path check timer set successfully (2 second interval)");
         }
+
+        /** Start automatic update check at startup */
+        LOG_INFO("Starting automatic update check at startup...");
+        CheckForUpdateAsync(hwnd, TRUE);
 
         LOG_INFO("Handling startup mode: %s", CLOCK_STARTUP_MODE);
         HandleStartupMode(hwnd);

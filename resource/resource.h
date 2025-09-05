@@ -10,7 +10,7 @@
 #define CATIME_RESOURCE_H
 
 /** @brief Application version information */
-#define CATIME_VERSION "1.1.3-alpha2"    /**< Version string */
+#define CATIME_VERSION "1.1.0-alpha1"    /**< Version string */
 #define CATIME_VERSION_MAJOR 1           /**< Major version number */
 #define CATIME_VERSION_MINOR 1           /**< Minor version number */
 #define CATIME_VERSION_PATCH 2           /**< Patch version number */
@@ -102,9 +102,6 @@
 #define CLOCK_IDM_TIMEOUT_COUNT_UP 136   /**< Count-up timeout action */
 #define CLOCK_IDM_OPEN_WEBSITE 137       /**< Open website timeout action */
 #define CLOCK_IDM_CURRENT_WEBSITE 138    /**< Current website timeout action */
-#define CLOCK_IDM_ADVANCED 142           /**< Advanced timeout options */
-#define CLOCK_IDM_RUN_COMMAND 143        /**< Run command timeout action */
-#define CLOCK_IDM_HTTP_REQUEST 144       /**< HTTP request timeout action */
 
 /** @brief Display and window menu identifiers */
 #define CLOCK_IDM_SHOW_CURRENT_TIME 150  /**< Show current time menu item */
@@ -307,6 +304,7 @@ extern int NOTIFICATION_TIMEOUT_MS;      /**< Notification timeout in millisecon
 #define IDD_UPDATE_DIALOG 710           /**< Update available dialog */
 #define IDC_UPDATE_TEXT 711             /**< Update message text control */
 #define IDC_UPDATE_EXIT_TEXT 712        /**< Update exit text control */
+#define IDC_UPDATE_NOTES 713            /**< Update release notes text control */
 
 /** @brief Update error dialog identifiers */
 #define IDD_UPDATE_ERROR_DIALOG 720     /**< Update error dialog */
@@ -315,6 +313,10 @@ extern int NOTIFICATION_TIMEOUT_MS;      /**< Notification timeout in millisecon
 /** @brief No update dialog identifiers */
 #define IDD_NO_UPDATE_DIALOG 730        /**< No update available dialog */
 #define IDC_NO_UPDATE_TEXT 731          /**< No update text control */
+
+/** @brief Exit dialog identifiers */
+#define IDD_EXIT_DIALOG 750             /**< Application exit dialog */
+#define IDC_EXIT_TEXT 751               /**< Exit message text control */
 
 /** @brief Font menu identifier */
 #define CLOCK_IDC_FONT_MENU 113         /**< Font selection submenu */

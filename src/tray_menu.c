@@ -7,6 +7,7 @@
 #include <shellapi.h>
 #include <stdio.h>
 #include <string.h>
+#include "../include/log.h"
 #include "../include/language.h"
 #include "../include/tray_menu.h"
 #include "../include/font.h"
@@ -15,7 +16,6 @@
 #include "../include/pomodoro.h"
 #include "../include/timer.h"
 #include "../include/config.h"
-#include "../include/log.h"
 #include "../resource/resource.h"
 
 /** @brief Timer state and display configuration externals */
@@ -39,6 +39,7 @@ extern char CLOCK_TIMEOUT_FILE_PATH[MAX_PATH];
 extern char CLOCK_TIMEOUT_TEXT[50];
 extern BOOL CLOCK_WINDOW_TOPMOST;
 extern TimeFormatType CLOCK_TIME_FORMAT;
+extern BOOL CLOCK_SHOW_MILLISECONDS;
 
 /** @brief Pomodoro technique configuration externals */
 extern int POMODORO_WORK_TIME;
@@ -176,13 +177,6 @@ void ShowColorMenu(HWND hwnd) {
                CLOCK_IDC_EDIT_MODE, 
                GetLocalizedString(L"编辑模式", L"Edit Mode"));
 
-    /** Dynamic text based on window visibility */
-    const wchar_t* visibilityText = IsWindowVisible(hwnd) ?
-        GetLocalizedString(L"隐藏窗口", L"Hide Window") :
-        GetLocalizedString(L"显示窗口", L"Show Window");
-    
-    AppendMenuW(hMenu, MF_STRING, CLOCK_IDC_TOGGLE_VISIBILITY, visibilityText);
-
     AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
 
     HMENU hTimeoutMenu = CreatePopupMenu();
@@ -254,25 +248,6 @@ void ShowColorMenu(HWND hwnd) {
     AppendMenuW(hTimeoutMenu, MF_STRING | (CLOCK_TIMEOUT_ACTION == TIMEOUT_ACTION_SLEEP ? MF_CHECKED : MF_UNCHECKED),
                CLOCK_IDM_SLEEP,
                GetLocalizedString(L"睡眠", L"Sleep"));
-
-    AppendMenuW(hTimeoutMenu, MF_SEPARATOR, 0, NULL);
-
-    HMENU hAdvancedMenu = CreatePopupMenu();
-
-    AppendMenuW(hAdvancedMenu, MF_STRING | (CLOCK_TIMEOUT_ACTION == TIMEOUT_ACTION_RUN_COMMAND ? MF_CHECKED : MF_UNCHECKED),
-               CLOCK_IDM_RUN_COMMAND,
-               GetLocalizedString(L"运行命令", L"Run Command"));
-
-    AppendMenuW(hAdvancedMenu, MF_STRING | (CLOCK_TIMEOUT_ACTION == TIMEOUT_ACTION_HTTP_REQUEST ? MF_CHECKED : MF_UNCHECKED),
-               CLOCK_IDM_HTTP_REQUEST,
-               GetLocalizedString(L"HTTP 请求", L"HTTP Request"));
-
-    BOOL isAdvancedOptionSelected = (CLOCK_TIMEOUT_ACTION == TIMEOUT_ACTION_RUN_COMMAND ||
-                                    CLOCK_TIMEOUT_ACTION == TIMEOUT_ACTION_HTTP_REQUEST);
-
-    AppendMenuW(hTimeoutMenu, MF_POPUP | (isAdvancedOptionSelected ? MF_CHECKED : MF_UNCHECKED),
-               (UINT_PTR)hAdvancedMenu,
-               GetLocalizedString(L"高级", L"Advanced"));
 
     AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hTimeoutMenu, 
                 GetLocalizedString(L"超时动作", L"Timeout Action"));
@@ -349,8 +324,13 @@ void ShowColorMenu(HWND hwnd) {
                 CLOCK_IDM_TIME_FORMAT_FULL_PADDED,
                 GetLocalizedString(L"00:09:59格式", L"00:09:59 Format"));
     
-    AppendMenuW(hTimeOptionsMenu, MF_POPUP, (UINT_PTR)hFormatMenu,
-                GetLocalizedString(L"格式", L"Format"));
+    /** Add separator line before milliseconds option */
+    AppendMenuW(hFormatMenu, MF_SEPARATOR, 0, NULL);
+    
+    /** Add milliseconds display option */
+    AppendMenuW(hFormatMenu, MF_STRING | (CLOCK_SHOW_MILLISECONDS ? MF_CHECKED : MF_UNCHECKED),
+                CLOCK_IDM_TIME_FORMAT_SHOW_MILLISECONDS,
+                GetLocalizedString(L"显示毫秒", L"Show Milliseconds"));
     
     AppendMenuW(hTimeOptionsMenu, MF_SEPARATOR, 0, NULL);
     
@@ -616,6 +596,8 @@ void ShowColorMenu(HWND hwnd) {
     AppendMenuW(hColorSubMenu, MF_POPUP, (UINT_PTR)hCustomizeMenu, 
                 GetLocalizedString(L"自定义", L"Customize"));
 
+    AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hFormatMenu,
+                GetLocalizedString(L"格式", L"Format"));
     AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hFontSubMenu, 
                 GetLocalizedString(L"字体", L"Font"));
     AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hColorSubMenu, 
@@ -717,6 +699,13 @@ void ShowContextMenu(HWND hwnd) {
     AppendMenuW(hTimerManageMenu, MF_STRING | (canRestart ? MF_ENABLED : MF_GRAYED),
                CLOCK_IDM_TIMER_RESTART, 
                GetLocalizedString(L"重新开始", L"Start Over"));
+    
+    /** Dynamic text based on window visibility */
+    const wchar_t* visibilityText = IsWindowVisible(hwnd) ?
+        GetLocalizedString(L"隐藏窗口", L"Hide Window") :
+        GetLocalizedString(L"显示窗口", L"Show Window");
+    
+    AppendMenuW(hTimerManageMenu, MF_STRING, CLOCK_IDC_TOGGLE_VISIBILITY, visibilityText);
     
     AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hTimerManageMenu,
                GetLocalizedString(L"计时管理", L"Timer Control"));

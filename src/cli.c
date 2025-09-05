@@ -10,11 +10,13 @@
 #include <stdio.h>
 
 #include "../include/timer.h"
+#include "../include/timer_events.h"
 #include "../include/window.h"
 #include "../include/window_procedure.h"
 #include "../resource/resource.h"
 #include "../include/notification.h"
 #include "../include/audio_player.h"
+#include "../include/dialog_procedure.h"
 
 extern int elapsed_time;
 extern int message_shown;
@@ -64,6 +66,10 @@ static INT_PTR CALLBACK CliHelpDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 		SendMessage(hwndDlg, DM_SETDEFID, (WPARAM)IDOK, 0);
 		HWND hOk = GetDlgItem(hwndDlg, IDOK);
 		if (hOk) SetFocus(hOk);
+		
+		/** Move dialog to primary screen */
+		MoveDialogToPrimaryScreen(hwndDlg);
+		
 		return FALSE;
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
@@ -335,6 +341,7 @@ BOOL HandleCliArguments(HWND hwnd, const char* cmdLine) {
 	KillTimer(hwnd, 1);
 	CLOCK_TOTAL_TIME = total_seconds;
 	countdown_elapsed_time = 0;
+	ResetMillisecondAccumulator();  /** Reset millisecond timing on new countdown */
 	elapsed_time = 0;
 	message_shown = FALSE;
 	countdown_message_shown = FALSE;
