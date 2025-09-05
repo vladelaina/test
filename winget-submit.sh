@@ -17,24 +17,73 @@ echo "版本：$TAG_VERSION"
 echo "下载链接：$DOWNLOAD_URL"
 echo "SHA256：$SHA256_HASH"
 
+# 检查 GITHUB_TOKEN 是否存在
+if [ -z "$GITHUB_TOKEN" ]; then
+    echo "❌ 错误：GITHUB_TOKEN 未设置"
+    exit 1
+else
+    echo "✅ GITHUB_TOKEN 已设置 (长度: ${#GITHUB_TOKEN})"
+fi
+
 # 设置变量
 PACKAGE_IDENTIFIER="VladElaina.Catime"
-WINGET_REPO_URL="https://github.com/ywyjcloudvlad/winget-pkgs.git"
-# 使用包含token的URL进行身份验证
-WINGET_REPO_URL_WITH_TOKEN="https://x-access-token:${GITHUB_TOKEN}@github.com/ywyjcloudvlad/winget-pkgs.git"
+UPSTREAM_REPO="ywyjcloudvlad/winget-pkgs"
 MANIFEST_PATH="manifests/v/VladElaina/Catime/$TAG_VERSION"
-TEMPLATE_PATH=".github/workflows/winget template"
 
-# 克隆或更新 winget-pkgs 仓库
-if [ ! -d "winget-pkgs" ]; then
-    echo "克隆 winget-pkgs 仓库..."
-    git clone $WINGET_REPO_URL_WITH_TOKEN winget-pkgs
+# 设置 GitHub CLI 身份验证
+export GH_TOKEN=$GITHUB_TOKEN
+
+# 测试上游仓库访问权限
+echo "🔍 测试上游仓库访问权限..."
+if gh repo view $UPSTREAM_REPO > /dev/null 2>&1; then
+    echo "✅ 可以访问上游仓库：$UPSTREAM_REPO"
 else
-    echo "更新 winget-pkgs 仓库..."
+    echo "❌ 无法访问上游仓库：$UPSTREAM_REPO"
+    echo "请检查仓库地址是否正确"
+    exit 1
+fi
+
+# 获取当前用户名
+GITHUB_USER=$(gh api user --jq '.login')
+if [ -z "$GITHUB_USER" ]; then
+    echo "❌ 无法获取当前用户信息，请检查 GITHUB_TOKEN 权限"
+    exit 1
+fi
+echo "✅ 当前用户：$GITHUB_USER"
+
+USER_FORK="$GITHUB_USER/winget-pkgs"
+
+# 检查是否已经有fork
+echo "🔍 检查是否已有 fork..."
+if gh repo view $USER_FORK > /dev/null 2>&1; then
+    echo "✅ 找到现有 fork：$USER_FORK"
+else
+    echo "🍴 创建 fork..."
+    gh repo fork $UPSTREAM_REPO --clone=false
+    echo "✅ Fork 创建成功：$USER_FORK"
+fi
+
+# 克隆或更新用户的 fork
+if [ ! -d "winget-pkgs" ]; then
+    echo "📥 克隆用户 fork..."
+    gh repo clone $USER_FORK winget-pkgs
+else
+    echo "🔄 更新用户 fork..."
     cd winget-pkgs
-    # 配置远程仓库URL以包含身份验证token
-    git remote set-url origin $WINGET_REPO_URL_WITH_TOKEN
-    git pull
+    git remote -v
+    # 确保有正确的远程仓库设置
+    git remote set-url origin "https://github.com/$USER_FORK.git"
+    
+    # 添加上游仓库
+    if ! git remote | grep -q upstream; then
+        git remote add upstream "https://github.com/$UPSTREAM_REPO.git"
+    fi
+    
+    # 获取最新更改
+    git fetch upstream
+    git checkout master
+    git merge upstream/master
+    git push origin master
     cd ..
 fi
 
@@ -43,9 +92,6 @@ cd winget-pkgs
 # 配置 git 用户信息
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
-
-# 配置远程仓库URL以包含身份验证token
-git remote set-url origin $WINGET_REPO_URL_WITH_TOKEN
 
 # 创建新的分支
 BRANCH_NAME="catime-$TAG_VERSION"
@@ -156,12 +202,12 @@ git add $MANIFEST_PATH/
 # 提交更改
 git commit -m "Add Catime version $TAG_VERSION"
 
-# 推送到远程仓库
-echo "推送到远程仓库..."
+# 推送到用户的 fork
+echo "📤 推送到用户 fork..."
 git push origin $BRANCH_NAME
 
-# 使用 GitHub CLI 自动创建 Pull Request
-echo "创建 Pull Request..."
+# 使用 GitHub CLI 创建 Pull Request
+echo "🔄 创建 Pull Request..."
 PR_TITLE="Add Catime version $TAG_VERSION"
 PR_BODY="自动提交 Catime $TAG_VERSION 版本到 winget
 
@@ -179,31 +225,33 @@ PR_BODY="自动提交 Catime $TAG_VERSION 版本到 winget
 
 此 PR 由 GitHub Actions 自动生成。"
 
-# 设置 GitHub CLI 身份验证
-export GH_TOKEN=$GITHUB_TOKEN
-
-# 创建 Pull Request
+# 从用户 fork 向上游仓库创建 Pull Request
 gh pr create \
   --title "$PR_TITLE" \
   --body "$PR_BODY" \
   --base master \
-  --head $BRANCH_NAME \
-  --repo ywyjcloudvlad/winget-pkgs
+  --head "$GITHUB_USER:$BRANCH_NAME" \
+  --repo "$UPSTREAM_REPO"
 
 if [ $? -eq 0 ]; then
     echo "✅ Pull Request 创建成功！"
-    PR_URL=$(gh pr view $BRANCH_NAME --repo ywyjcloudvlad/winget-pkgs --json url --jq '.url')
+    # 获取PR信息
+    PR_URL=$(gh pr list --repo "$UPSTREAM_REPO" --head "$GITHUB_USER:$BRANCH_NAME" --json url --jq '.[0].url')
     echo "🔗 PR 链接：$PR_URL"
 else
-    echo "❌ Pull Request 创建失败，可能需要手动创建"
-    echo "分支：$BRANCH_NAME"
-    echo "目标：master"
+    echo "❌ Pull Request 创建失败"
+    echo "💡 可以手动创建 PR："
+    echo "   源分支：$GITHUB_USER:$BRANCH_NAME"
+    echo "   目标仓库：$UPSTREAM_REPO"
+    echo "   目标分支：master"
 fi
 
 echo ""
 echo "🎉 Winget 提交流程完成！"
 echo "📦 版本：$TAG_VERSION"
 echo "📁 清单路径：$MANIFEST_PATH"
-echo "🌿 分支：$BRANCH_NAME"
+echo "🍴 Fork：$USER_FORK"
+echo "🌿 分支：$GITHUB_USER:$BRANCH_NAME"
+echo "🎯 目标：$UPSTREAM_REPO"
 
 cd ..
