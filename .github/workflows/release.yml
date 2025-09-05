@@ -8,6 +8,7 @@ on:
 # 添加权限配置
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   build-and-release:
@@ -23,11 +24,19 @@ jobs:
         echo "Current timezone: $(date +%Z)"
         echo "Current time: $(date)"
         
-    - name: Install MinGW compiler and CMake
+    - name: Install MinGW compiler, CMake and GitHub CLI
       run: |
         sudo apt-get update
         sudo apt-get install -y mingw-w64 cmake
+        
+        # 安装 GitHub CLI
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+        sudo apt-get update
+        sudo apt-get install -y gh
+        
         cmake --version
+        gh --version
         
     - name: Extract version number
       id: get_version
@@ -63,5 +72,27 @@ jobs:
           > [!TIP]
           > My friend, while downloading Catime, why not check out my friend's [Easy-Cat-Timer](https://github.com/xujiangjiang/Easy-Cat-Timer)— a super cute and practical countdown timer!
           > 我的朋友，在下载 Catime 时，不妨顺便看看我朋友开发的 [Easy-Cat-Timer](https://github.com/xujiangjiang/Easy-Cat-Timer)——一款超级可爱又实用的倒计时软件！
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Calculate SHA256 for Winget
+      id: calc_sha256
+      run: |
+        SHA256_HASH=$(sha256sum catime_${{ env.TAG_VERSION }}.exe | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')
+        echo "SHA256_HASH=$SHA256_HASH" >> $GITHUB_ENV
+        echo "SHA256: $SHA256_HASH"
+        
+    - name: Submit to Winget
+      run: |
+        # 设置必要的环境变量
+        export TAG_VERSION="${{ env.TAG_VERSION }}"
+        export DOWNLOAD_URL="https://github.com/vladelaina/Catime/releases/download/v${{ env.TAG_VERSION }}/catime_${{ env.TAG_VERSION }}.exe"
+        export SHA256_HASH="${{ env.SHA256_HASH }}"
+        
+        # 使脚本可执行
+        chmod +x winget-submit.sh
+        
+        # 运行 winget 提交脚本
+        ./winget-submit.sh
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
