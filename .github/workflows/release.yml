@@ -23,16 +23,11 @@ jobs:
         echo "Current timezone: $(date +%Z)"
         echo "Current time: $(date)"
         
-    - name: Install MinGW compiler
+    - name: Install MinGW compiler and CMake
       run: |
         sudo apt-get update
-        sudo apt-get install -y mingw-w64
-        
-    - name: Install XMake
-      run: |
-        bash <(curl -fsSL https://xmake.io/shget.text)
-        source ~/.xmake/profile
-        xmake --version
+        sudo apt-get install -y mingw-w64 cmake
+        cmake --version
         
     - name: Extract version number
       id: get_version
@@ -46,11 +41,22 @@ jobs:
       
     - name: Build application
       run: |
-        # Execute xmake build
-        xmake -y
-        # Find build artifacts and rename with version
-        find . -name "catime.exe" -type f -print -exec cp {} catime_${{ env.TAG_VERSION }}.exe \;
-        echo "Build completed using xmake"
+        # Create build directory
+        mkdir -p build
+        cd build
+        
+        # Configure CMake with MinGW cross-compilation
+        cmake .. \
+          -DCMAKE_TOOLCHAIN_FILE=../mingw-w64-toolchain.cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
+        
+        # Build the project
+        make -j$(nproc)
+        
+        # Copy and rename the executable
+        cp catime.exe ../catime_${{ env.TAG_VERSION }}.exe
+        echo "Build completed using CMake"
         
     - name: Create GitHub Release
       id: create_release
