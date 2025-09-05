@@ -20,16 +20,20 @@ echo "SHA256：$SHA256_HASH"
 # 设置变量
 PACKAGE_IDENTIFIER="VladElaina.Catime"
 WINGET_REPO_URL="https://github.com/ywyjcloudvlad/winget-pkgs.git"
+# 使用包含token的URL进行身份验证
+WINGET_REPO_URL_WITH_TOKEN="https://x-access-token:${GITHUB_TOKEN}@github.com/ywyjcloudvlad/winget-pkgs.git"
 MANIFEST_PATH="manifests/v/VladElaina/Catime/$TAG_VERSION"
 TEMPLATE_PATH=".github/workflows/winget template"
 
 # 克隆或更新 winget-pkgs 仓库
 if [ ! -d "winget-pkgs" ]; then
     echo "克隆 winget-pkgs 仓库..."
-    git clone $WINGET_REPO_URL winget-pkgs
+    git clone $WINGET_REPO_URL_WITH_TOKEN winget-pkgs
 else
     echo "更新 winget-pkgs 仓库..."
     cd winget-pkgs
+    # 配置远程仓库URL以包含身份验证token
+    git remote set-url origin $WINGET_REPO_URL_WITH_TOKEN
     git pull
     cd ..
 fi
@@ -39,6 +43,9 @@ cd winget-pkgs
 # 配置 git 用户信息
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
+
+# 配置远程仓库URL以包含身份验证token
+git remote set-url origin $WINGET_REPO_URL_WITH_TOKEN
 
 # 创建新的分支
 BRANCH_NAME="catime-$TAG_VERSION"
