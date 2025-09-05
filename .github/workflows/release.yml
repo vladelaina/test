@@ -83,6 +83,7 @@ jobs:
         echo "SHA256: $SHA256_HASH"
         
     - name: Submit to Winget
+      if: ${{ secrets.WINGET_TOKEN != '' }}
       run: |
         # 设置必要的环境变量
         export TAG_VERSION="${{ env.TAG_VERSION }}"
@@ -95,4 +96,13 @@ jobs:
         # 运行 winget 提交脚本
         ./winget-submit.sh
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN || secrets.GITHUB_TOKEN }}
+        
+    - name: Skip Winget submission (no token)
+      if: ${{ secrets.WINGET_TOKEN == '' }}
+      run: |
+        echo "⚠️  跳过 Winget 提交：未配置 WINGET_TOKEN"
+        echo "💡 如需自动提交到 Winget，请："
+        echo "   1. 创建具有 winget-pkgs 仓库权限的 Personal Access Token"
+        echo "   2. 在仓库设置中添加名为 WINGET_TOKEN 的 secret"
+        echo "   3. 重新运行此 workflow"
