@@ -68,7 +68,11 @@ jobs:
             organizationName: '${GITHUB_REPOSITORY_OWNER}',
             projectName: '${REPO_NAME}',
             onBrokenLinks: 'ignore',
-            onBrokenMarkdownLinks: 'ignore',
+            markdown: {
+              hooks: {
+                onBrokenMarkdownLinks: 'ignore',
+              },
+            },
             i18n: {
               defaultLocale: 'en',
               locales: ['en'],
