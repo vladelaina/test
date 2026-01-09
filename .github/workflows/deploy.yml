@@ -44,6 +44,11 @@ jobs:
           mv temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
 
+      - name: Configure baseUrl for GitHub Pages
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          sed -i "s|baseUrl: '/'|baseUrl: '/${REPO_NAME}/'|g" docusaurus.config.js
+
       - name: Install dependencies and Build
         run: |
           npm install
