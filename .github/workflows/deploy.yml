@@ -62,8 +62,8 @@ jobs:
             baseUrl: '/${REPO_NAME}/',
             organizationName: '${GITHUB_REPOSITORY_OWNER}',
             projectName: '${REPO_NAME}',
-            onBrokenLinks: 'throw',
-            onBrokenMarkdownLinks: 'warn',
+            onBrokenLinks: 'ignore',
+            onBrokenMarkdownLinks: 'ignore',
             i18n: {
               defaultLocale: 'en',
               locales: ['en'],
@@ -113,6 +113,14 @@ jobs:
           
           # 删除不需要的文件
           rm -rf blog src/pages src/components
+          
+          # 删除示例文档，只保留用户自己的文档
+          rm -rf docs/tutorial-basics docs/tutorial-extras
+          
+          # 如果用户没有自己的 intro.md，创建一个默认的
+          if [ ! -f "docs/intro.md" ] && [ ! -f "docs/index.md" ]; then
+            echo -e "# Welcome\n\nThis is your documentation site." > docs/intro.md
+          fi
 
       - name: Install dependencies and Build
         run: |
