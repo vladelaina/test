@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,13 +29,8 @@ jobs:
 
       - name: Backup user content
         run: |
-          # 备份用户的文件到临时目录
           mkdir -p /tmp/user-content
-          
-          # 复制根目录下的 md 文件（除了 README.md）
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
-          
-          # 复制用户的文件夹（排除 . 开头的文件夹和 .github）
           for dir in */; do
             case "$dir" in
               .*) ;;
@@ -56,7 +51,6 @@ jobs:
         if: steps.check.outputs.initialized == 'false'
         run: |
           npx create-docusaurus@latest temp-site classic --javascript
-          # 使用 cp 而不是 mv，避免覆盖已有文件夹的问题
           cp -rn temp-site/* . 2>/dev/null || true
           cp -rn temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
@@ -65,11 +59,9 @@ jobs:
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          # 直接创建一个干净的文档专用配置文件
           cat > docusaurus.config.js << CONFIGEOF
           import {themes as prismThemes} from 'prism-react-renderer';
           
-          /** @type {import('@docusaurus/types').Config} */
           const config = {
             title: '${GITHUB_REPOSITORY_OWNER}',
             tagline: 'Welcome',
@@ -87,7 +79,6 @@ jobs:
             presets: [
               [
                 'classic',
-                /** @type {import('@docusaurus/preset-classic').Options} */
                 ({
                   docs: {
                     routeBasePath: '/',
@@ -102,10 +93,12 @@ jobs:
               ],
             ],
             themeConfig:
-              /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
               ({
                 navbar: {
                   title: '${GITHUB_REPOSITORY_OWNER}',
+                  logo: {
+                    href: 'https://github.com/${GITHUB_REPOSITORY_OWNER}',
+                  },
                   items: [
                     {
                       href: 'https://github.com/${GITHUB_REPOSITORY}',
@@ -124,18 +117,13 @@ jobs:
           export default config;
           CONFIGEOF
           
-          # 删除 Docusaurus 生成的示例文件
           rm -rf blog src/pages src/components docs
-          
-          # 从备份恢复用户的文件到 content 目录
           mkdir -p content
           cp -r /tmp/user-content/* content/ 2>/dev/null || true
           
-          # 如果 content 为空，创建默认文档
           if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
             echo -e "---\nslug: /\n---\n\n# Welcome\n\nAdd your markdown files to get started." > content/index.md
           else
-            # 递归查找第一个文档，设置为首页
             FIRST_DOC=$(find content -name "*.md" | head -1)
             if [ -n "$FIRST_DOC" ]; then
               if ! grep -q "slug: /" "$FIRST_DOC"; then
