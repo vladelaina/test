@@ -113,7 +113,7 @@ jobs:
           CONFIGEOF
           
           # 删除不需要的文件
-          rm -rf blog src/pages src/components docs
+          rm -rf blog src/pages src/components
           
           # 创建 content 目录
           mkdir -p content
@@ -121,7 +121,7 @@ jobs:
           # 复制根目录下的 md 文件（除了 README.md）
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} content/ \;
           
-          # 复制用户的文件夹（排除 . 开头的、node_modules、src、static、build、content）
+          # 复制用户的文件夹（排除系统文件夹）
           for dir in */; do
             case "$dir" in
               .*|node_modules/|src/|static/|build/|content/|temp-site/) ;;
@@ -129,11 +129,16 @@ jobs:
             esac
           done
           
-          # 设置第一个文档为首页
-          FIRST_DOC=$(find content -maxdepth 1 -name "*.md" | head -1)
-          if [ -n "$FIRST_DOC" ]; then
-            if ! grep -q "slug: /" "$FIRST_DOC"; then
-              sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
+          # 如果 content 为空，创建默认文档
+          if [ -z "$(ls -A content 2>/dev/null)" ]; then
+            echo -e "---\nslug: /\n---\n\n# Welcome\n\nAdd your markdown files to get started." > content/index.md
+          else
+            # 设置第一个文档为首页
+            FIRST_DOC=$(find content -maxdepth 1 -name "*.md" | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              if ! grep -q "slug: /" "$FIRST_DOC"; then
+                sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
+              fi
             fi
           fi
 
