@@ -103,6 +103,27 @@ Before releasing a theme, test with:
 - [ ] Files containing `localhost` URLs (dead link check)
 - [ ] Repository without `index.md` (homepage fallback logic)
 
+## Starlight (Astro) Configuration
+
+- [ ] Use `npm create astro@latest -- --template starlight` for correct project structure
+- [ ] Starlight v0.33.0+ changed `social` config from object to array format
+  - Old: `social: { github: 'url' }`
+  - New: `social: [{ icon: 'github', label: 'GitHub', href: 'url' }]`
+- [ ] Every `.md` file MUST have `title` in frontmatter - Starlight will fail without it
+- [ ] Sidebar `slug` must be lowercase - uppercase will cause "slug does not exist" error
+- [ ] `autogenerate: { directory: '.' }` doesn't work well - use specific directory names
+- [ ] Content goes in `src/content/docs/` directory
+- [ ] Output directory is `dist`
+- [ ] Use `.mdx` extension for index file if needed
+
+## Rspress Configuration
+
+- [ ] Public assets go in `docs/public/` (not project root `public/`)
+- [ ] Sidebar `items` must be an array, not `'auto'` string
+- [ ] Output directory is `doc_build`
+- [ ] Exclude `public` directory from sidebar generation
+- [ ] Config file is `rspress.config.ts` (TypeScript)
+
 ## Common Errors & Solutions
 
 | Error | Cause | Solution |
@@ -116,6 +137,12 @@ Before releasing a theme, test with:
 | `sidebar: 'auto' not working` | VitePress doesn't auto-generate | Write custom sidebar script |
 | `Page Not Found` on homepage | Missing `slug: /` frontmatter | Add frontmatter to first doc |
 | `here-document delimited by end-of-file` | Heredoc in YAML run block | Use `printf` instead |
+| `social: Expected array, received object` | Starlight v0.33.0+ API change | Use array format for social links |
+| `title: Required` (Starlight) | Missing frontmatter title | Auto-add title from filename |
+| `slug does not exist` (Starlight) | Uppercase slug in sidebar | Convert slug to lowercase |
+| `Entry docs → 404 was not found` | No valid index page | Ensure index.md/mdx exists with frontmatter |
+| `item.items.map is not a function` | Rspress sidebar `items: 'auto'` | Use array of items, not string |
+| `Failed to read favicon` (Rspress) | Wrong public directory path | Put assets in `docs/public/` |
 
 ## Multi-Language Support
 

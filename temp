@@ -81,6 +81,9 @@ jobs:
           for dir in docs/*/; do
             if [ -d "$dir" ]; then
               DIRNAME=$(basename "$dir")
+              if [ "$DIRNAME" = "public" ]; then
+                continue
+              fi
               LABEL=$(echo "$DIRNAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
               
               DIR_ITEMS=""
