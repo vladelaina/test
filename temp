@@ -24,6 +24,13 @@ jobs:
         with:
           node-version: 20
 
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-vitepress-${{ runner.os }}
+          restore-keys: npm-vitepress-
+
       - name: Backup user content
         run: |
           mkdir -p /tmp/user-content
