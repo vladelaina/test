@@ -1,4 +1,4 @@
-name: Deploy Docsify to GitHub Pages
+name: Deploy Starlight to GitHub Pages
 
 on:
   workflow_call:
@@ -19,49 +19,68 @@ jobs:
       - name: Checkout your repo
         uses: actions/checkout@v4
 
-      - name: Setup Docsify
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-starlight-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-starlight-
+
+      - name: Setup Starlight
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
-          FULL_REPO="${GITHUB_REPOSITORY}"
           
-          mkdir -p site
+          mkdir -p temp-site/src/content/docs
+          mkdir -p temp-site/src/assets
+          mkdir -p temp-site/public
+          mkdir -p temp-site/src/components
           
-          find . -maxdepth 1 -name "*.md" -exec cp {} site/ \; 2>/dev/null || true
+          curl -sL "https://github.com/${OWNER}.png" -o temp-site/src/assets/avatar.png || true
+          curl -sL "https://github.com/${OWNER}.png" -o temp-site/public/favicon.png || true
+          
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} temp-site/src/content/docs/ \; 2>/dev/null || true
+          if [ -f "README.md" ]; then
+            cp README.md temp-site/src/content/docs/index.md
+          fi
+          
           for dir in */; do
             case "$dir" in
-              .*) ;;
-              site/) ;;
-              node_modules/) ;;
-              *) cp -r "$dir" site/ 2>/dev/null || true ;;
+              .*|temp-site/|node_modules/) ;;
+              *) cp -r "$dir" temp-site/src/content/docs/ 2>/dev/null || true ;;
             esac
           done
           
-          if [ ! -f "site/README.md" ]; then
-            if [ -f "site/index.md" ]; then
-              cp site/index.md site/README.md
+          if [ ! -f "temp-site/src/content/docs/index.md" ]; then
+            FIRST_DOC=$(find temp-site/src/content/docs -name "*.md" -type f | sort | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              cp "$FIRST_DOC" temp-site/src/content/docs/index.md
             else
-              FIRST_DOC=$(find site -name "*.md" -type f | sort | head -1)
-              if [ -n "$FIRST_DOC" ]; then
-                cp "$FIRST_DOC" site/README.md
-              else
-                printf '%s\n' '# Welcome' '' 'Add your markdown files to get started.' > site/README.md
-              fi
+              printf '%s\n' '---' 'title: Welcome' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > temp-site/src/content/docs/index.md
             fi
           fi
           
-          printf '%s\n' '<!DOCTYPE html>' '<html lang="en">' '<head>' '  <meta charset="UTF-8">' '  <meta name="viewport" content="width=device-width, initial-scale=1.0">' "  <title>${OWNER}/${REPO_NAME}</title>" "  <link rel=\"icon\" href=\"https://github.com/${OWNER}.png\">" '  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">' '  <style>' '    .sidebar .app-name-link img { border-radius: 50%; }' '  </style>' '</head>' '<body>' '  <div id="app"></div>' '  <script>' '    window.$docsify = {' "      name: '<img src=\"https://github.com/${OWNER}.png\" width=\"32\" style=\"vertical-align:middle;margin-right:8px;border-radius:50%\">${OWNER}/${REPO_NAME}'," "      nameLink: 'https://github.com/${OWNER}'," "      repo: 'https://github.com/${FULL_REPO}'," '      loadSidebar: true,' '      subMaxLevel: 3,' '      search: {' "        placeholder: 'Search'," "        noData: 'No results'," '        depth: 3' '      },' '      auto2top: true' '    }' '  </script>' '  <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>' '  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>' '</body>' '</html>' > site/index.html
-          
-          if [ ! -f "site/_sidebar.md" ]; then
-            echo "* [Home](/)" > site/_sidebar.md
-            find site -name "*.md" ! -name "README.md" ! -name "_sidebar.md" ! -name "_navbar.md" -type f | sort | while read f; do
-              name=$(basename "$f" .md)
-              path="${f#site/}"
-              echo "* [${name}](/${path})" >> site/_sidebar.md
-            done
+          if ! head -5 temp-site/src/content/docs/index.md | grep -q "^---"; then
+            TEMP_CONTENT=$(cat temp-site/src/content/docs/index.md)
+            printf '%s\n' '---' 'title: Home' '---' '' "$TEMP_CONTENT" > temp-site/src/content/docs/index.md
           fi
           
-          touch site/.nojekyll
+          cd temp-site
+          
+          printf '%s\n' '{' '  "name": "temp-site",' '  "type": "module",' '  "version": "0.0.0",' '  "scripts": {' '    "build": "astro build"' '  },' '  "dependencies": {' '    "astro": "^5.0.0",' '    "@astrojs/starlight": "^0.32.0",' '    "sharp": "^0.33.0"' '  }' '}' > package.json
+          
+          printf '%s\n' '---' "import type { Props } from '@astrojs/starlight/props';" "import Default from '@astrojs/starlight/components/SiteTitle.astro';" '---' '' "<a href=\"https://github.com/${OWNER}\" class=\"site-title sl-flex\">" '  <Default {...Astro.props}><slot /></Default>' '</a>' '' '<style>' '  .site-title { text-decoration: none; color: inherit; }' '</style>' > src/components/SiteTitle.astro
+          
+          printf '%s\n' "import { defineConfig } from 'astro/config';" "import starlight from '@astrojs/starlight';" '' "export default defineConfig({" "  site: 'https://${OWNER}.github.io'," "  base: '/${REPO_NAME}'," "  integrations: [" "    starlight({" "      title: '${OWNER}/${REPO_NAME}'," "      logo: {" "        src: './src/assets/avatar.png'," "      }," "      favicon: '/favicon.png'," "      social: {" "        github: 'https://github.com/${OWNER}/${REPO_NAME}'," "      }," "      sidebar: [" "        {" "          label: 'Docs'," "          autogenerate: { directory: '.' }," "        }," "      ]," "      credits: false," "      components: {" "        SiteTitle: './src/components/SiteTitle.astro'," "      }," "    })," "  ]," "});" > astro.config.mjs
+          
+          npm install
+          npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -69,7 +88,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: temp-site/dist
 
   deploy:
     environment:
