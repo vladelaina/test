@@ -56,6 +56,15 @@ jobs:
             esac
           done
           
+          find temp-site/src/content/docs -name "*.md" -type f | while read f; do
+            if ! head -3 "$f" | grep -q "^---"; then
+              FILENAME=$(basename "$f" .md)
+              TITLE=$(echo "$FILENAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+              TEMP_CONTENT=$(cat "$f")
+              printf '%s\n' '---' "title: ${TITLE}" '---' '' "$TEMP_CONTENT" > "$f"
+            fi
+          done
+          
           if [ ! -f "temp-site/src/content/docs/index.mdx" ]; then
             FIRST_DOC=$(find temp-site/src/content/docs -name "*.md" -type f | sort | head -1)
             if [ -n "$FIRST_DOC" ]; then
