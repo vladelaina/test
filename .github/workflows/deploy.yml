@@ -130,11 +130,11 @@ jobs:
           done
           
           # 如果 content 为空，创建默认文档
-          if [ -z "$(ls -A content 2>/dev/null)" ]; then
+          if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
             echo -e "---\nslug: /\n---\n\n# Welcome\n\nAdd your markdown files to get started." > content/index.md
           else
-            # 设置第一个文档为首页
-            FIRST_DOC=$(find content -maxdepth 1 -name "*.md" | head -1)
+            # 递归查找第一个文档，设置为首页
+            FIRST_DOC=$(find content -name "*.md" | head -1)
             if [ -n "$FIRST_DOC" ]; then
               if ! grep -q "slug: /" "$FIRST_DOC"; then
                 sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
