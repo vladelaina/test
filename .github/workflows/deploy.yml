@@ -27,6 +27,22 @@ jobs:
         with:
           node-version: 20
 
+      - name: Backup user content
+        run: |
+          # 备份用户的文件到临时目录
+          mkdir -p /tmp/user-content
+          
+          # 复制根目录下的 md 文件（除了 README.md）
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          
+          # 复制用户的文件夹（排除 . 开头的文件夹和 .github）
+          for dir in */; do
+            case "$dir" in
+              .*) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
       - name: Check if already initialized
         id: check
         run: |
@@ -112,22 +128,12 @@ jobs:
           export default config;
           CONFIGEOF
           
-          # 删除不需要的文件
-          rm -rf blog src/pages src/components
+          # 删除 Docusaurus 生成的示例文件
+          rm -rf blog src/pages src/components docs
           
-          # 创建 content 目录
+          # 从备份恢复用户的文件到 content 目录
           mkdir -p content
-          
-          # 复制根目录下的 md 文件（除了 README.md）
-          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} content/ \;
-          
-          # 复制用户的文件夹（排除系统文件夹）
-          for dir in */; do
-            case "$dir" in
-              .*|node_modules/|src/|static/|build/|content/|temp-site/) ;;
-              *) cp -r "$dir" content/ 2>/dev/null || true ;;
-            esac
-          done
+          cp -r /tmp/user-content/* content/ 2>/dev/null || true
           
           # 如果 content 为空，创建默认文档
           if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
