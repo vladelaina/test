@@ -1,0 +1,110 @@
+作为一个有经验的开源项目作者，你肯定希望部署流程是**全自动化的**（即：Push 代码到 `main` 分支 -> GitHub Actions 自动构建 -> 发布到 `gh-pages` 分支）。
+
+Docusaurus 对此支持非常完美。你只需要做 **2 步配置** 即可。
+
+### 第一步：修改 `docusaurus.config.js`
+
+你需要告诉 Docusaurus 你的仓库在哪里，以便它生成正确的资源链接。打开项目根目录下的配置文件，找到并修改以下字段：
+
+```javascript
+const config = {
+  // ... 其他配置
+
+  // 1. 你的 GitHub 用户名或组织名
+  organizationName: '你的GitHub用户名', 
+  
+  // 2. 你的仓库名称
+  projectName: '你的仓库名', 
+
+  // 3. 部署后的 URL (通常是 https://<user>.github.io)
+  url: 'https://你的GitHub用户名.github.io',
+
+  // 4. 这里的配置最关键！！！
+  // 如果你的仓库是 username.github.io (个人主页)，这里填 '/'
+  // 如果你的仓库是普通项目 (如 my-project)，这里填 '/my-project/'
+  baseUrl: '/你的仓库名/', 
+
+  // 5. 建议加上这个，防止 GitHub Pages 处理 HTML 链接时的路径问题
+  trailingSlash: false,
+
+  // ...
+};
+
+module.exports = config;
+
+```
+
+### 第二步：添加 GitHub Actions 脚本
+
+在你的项目根目录下，创建目录和文件： `.github/workflows/deploy.yml`。
+复制以下内容进去。这是 Docusaurus 官方推荐的脚本，它会在你向 `main` 分支推送代码时自动部署。
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # 确保这里是你项目的主分支名称 (main 或 master)
+    # 只有当 package.json, lock 文件或代码变动时才触发，避免不必要的构建
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+
+jobs:
+  build:
+    name: Build Docusaurus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm' # 或者 'yarn' / 'pnpm'，根据你用的包管理器修改
+
+      - name: Install dependencies
+        run: npm ci # 如果用 yarn 请改为 yarn install --frozen-lockfile
+
+      - name: Build website
+        run: npm run build
+
+      # 这一步通过 deploy-to-git-action 把构建好的 build 文件夹推送到 gh-pages 分支
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Docusaurus 默认构建输出目录是 build
+          publish_dir: ./build
+          # 提交信息
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+
+```
+
+### 第三步：设置 GitHub 仓库 (最后一步)
+
+1. 把上述代码 Push 到 GitHub。
+2. 等待 Actions 跑完（第一次可能会报错或者需要时间，不用管，先做下一步）。
+3. 进入你的 GitHub 仓库页面 -> **Settings** (设置)。
+4. 在左侧侧边栏找到 **Pages**。
+5. 在 **Build and deployment** 下的 **Source** 选择 **Deploy from a branch**。
+6. 在 **Branch** 选项里，选择 **`gh-pages`** 分支 (这个分支是上面那个 Action 自动生成的)，文件夹选 `/(root)`。
+7. 点击 **Save**。
+
+### 验证
+
+等待 1-2 分钟，刷新 Pages 设置页面，顶端会显示：
+
+> "Your site is live at `https://你的用户名.github.io/你的仓库名/`"
+
+点击链接，你的产品说明书博客就上线了！
+
+---
+
+**💡 给开源作者的小贴士：**
+
+* **关于 CNAME**: 如果你以后想绑定自己的域名（比如 `docs.yourproject.com`），只需要在 `static` 目录下放一个名为 `CNAME` 的文件（里面写上域名），Docusaurus 会在构建时自动把它复制到根目录，GitHub Pages 也会自动识别。
+* **关于版本控制**: 既然你的项目有 2.5k Star，可能涉及多版本维护。Docusaurus 有强大的 `npm run docusaurus docs:version 1.0.0` 命令，可以帮你把当前的文档“快照”保存下来，非常适合做“v1.0 文档”、“v2.0 文档”的切换。
