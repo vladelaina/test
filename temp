@@ -85,7 +85,6 @@ jobs:
                   docs: {
                     routeBasePath: '/',
                     path: 'content',
-                    sidebarPath: './sidebars.js',
                   },
                   blog: false,
                   theme: {
@@ -123,10 +122,20 @@ jobs:
           if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
             echo -e "---\nslug: /\n---\n\n# Welcome\n\nAdd your markdown files to get started." > content/index.md
           else
-            FIRST_DOC=$(find content -name "*.md" | head -1)
-            if [ -n "$FIRST_DOC" ]; then
-              if ! grep -q "slug: /" "$FIRST_DOC"; then
-                sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
+            if [ -f "content/index.md" ]; then
+              if ! grep -q "slug: /" "content/index.md"; then
+                sed -i '1s/^/---\nslug: \/\n---\n\n/' "content/index.md"
+              fi
+            elif [ -f "content/README.md" ]; then
+              if ! grep -q "slug: /" "content/README.md"; then
+                sed -i '1s/^/---\nslug: \/\n---\n\n/' "content/README.md"
+              fi
+            else
+              FIRST_DOC=$(find content -name "*.md" -type f | sort | head -1)
+              if [ -n "$FIRST_DOC" ]; then
+                if ! grep -q "slug: /" "$FIRST_DOC"; then
+                  sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
+                fi
               fi
             fi
           fi
