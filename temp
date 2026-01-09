@@ -49,12 +49,18 @@ jobs:
           cat > .vitepress/config.js << 'CONFIGEOF'
           export default {
             title: '${GITHUB_REPOSITORY_OWNER}',
+            titleTemplate: ':title - ${GITHUB_REPOSITORY_OWNER}',
             description: 'Documentation',
             base: '/${REPO_NAME}/',
             srcDir: 'docs',
             cleanUrls: true,
             ignoreDeadLinks: true,
             themeConfig: {
+              siteTitle: '${GITHUB_REPOSITORY_OWNER}',
+              logo: {
+                src: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
+                link: 'https://github.com/${GITHUB_REPOSITORY_OWNER}'
+              },
               search: {
                 provider: 'local'
               },
