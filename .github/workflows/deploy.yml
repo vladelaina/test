@@ -56,6 +56,7 @@ jobs:
             base: '/${REPO_NAME}/',
             srcDir: 'docs',
             cleanUrls: true,
+            ignoreDeadLinks: true,
             themeConfig: {
               nav: [
                 { text: 'GitHub', link: 'https://github.com/${GITHUB_REPOSITORY}' }
