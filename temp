@@ -82,7 +82,17 @@ jobs:
             if [ -d "$dir" ]; then
               DIRNAME=$(basename "$dir")
               LABEL=$(echo "$DIRNAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
-              SIDEBAR_ITEMS="${SIDEBAR_ITEMS}{ text: '${LABEL}', link: '/${DIRNAME}/', items: 'auto' },"
+              
+              DIR_ITEMS=""
+              for f in "$dir"*.md; do
+                if [ -f "$f" ]; then
+                  FNAME=$(basename "$f" .md)
+                  FTITLE=$(echo "$FNAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                  DIR_ITEMS="${DIR_ITEMS}{ text: '${FTITLE}', link: '/${DIRNAME}/${FNAME}' },"
+                fi
+              done
+              
+              SIDEBAR_ITEMS="${SIDEBAR_ITEMS}{ text: '${LABEL}', items: [${DIR_ITEMS}] },"
             fi
           done
           
