@@ -69,6 +69,7 @@ jobs:
             projectName: '${REPO_NAME}',
             onBrokenLinks: 'ignore',
             markdown: {
+              format: 'md',
               hooks: {
                 onBrokenMarkdownLinks: 'ignore',
               },
