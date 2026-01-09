@@ -88,16 +88,15 @@ jobs:
             enhanceApp({ app, router }) {
               if (typeof window !== 'undefined') {
                 const repoUrl = 'https://github.com/${GITHUB_REPOSITORY}'
-                setTimeout(() => {
-                  const brand = document.querySelector('.VPNavBarTitle')
-                  if (brand) {
-                    brand.style.cursor = 'pointer'
-                    brand.addEventListener('click', (e) => {
-                      e.preventDefault()
-                      window.open(repoUrl, '_blank')
-                    })
+                const updateLink = () => {
+                  const link = document.querySelector('.VPNavBarTitle a')
+                  if (link) {
+                    link.href = repoUrl
+                    link.target = '_blank'
                   }
-                }, 100)
+                }
+                setTimeout(updateLink, 100)
+                router.onAfterRouteChanged = updateLink
               }
             }
           }
