@@ -22,6 +22,8 @@ jobs:
       - name: Setup Docsify
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          FULL_REPO="${GITHUB_REPOSITORY}"
           
           mkdir -p site
           
@@ -29,7 +31,7 @@ jobs:
           for dir in */; do
             case "$dir" in
               .*) ;;
-              site) ;;
+              site/) ;;
               *) cp -r "$dir" site/ 2>/dev/null || true ;;
             esac
           done
@@ -47,48 +49,7 @@ jobs:
             fi
           fi
           
-          cat > site/index.html << 'HTMLEOF'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SITE_TITLE</title>
-  <link rel="icon" href="https://github.com/GITHUB_OWNER.png">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-  <style>
-    .sidebar .app-name-link img { border-radius: 50%; }
-  </style>
-</head>
-<body>
-  <div id="app"></div>
-  <script>
-    window.$docsify = {
-      name: '<img src="https://github.com/GITHUB_OWNER.png" width="32" style="vertical-align:middle;margin-right:8px;border-radius:50%">SITE_TITLE',
-      nameLink: 'https://github.com/GITHUB_REPO',
-      repo: 'https://github.com/GITHUB_REPO',
-      loadSidebar: true,
-      subMaxLevel: 3,
-      search: {
-        placeholder: 'Search',
-        noData: 'No results',
-        depth: 3
-      },
-      auto2top: true
-    }
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
-</body>
-</html>
-HTMLEOF
-          
-          sed -i "s|SITE_TITLE|${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}|g" site/index.html
-          sed -i "s|GITHUB_OWNER|${GITHUB_REPOSITORY_OWNER}|g" site/index.html
-          sed -i "s|GITHUB_REPO|${GITHUB_REPOSITORY}|g" site/index.html
+          printf '%s\n' '<!DOCTYPE html>' '<html lang="en">' '<head>' '  <meta charset="UTF-8">' '  <meta name="viewport" content="width=device-width, initial-scale=1.0">' "  <title>${OWNER}/${REPO_NAME}</title>" "  <link rel=\"icon\" href=\"https://github.com/${OWNER}.png\">" '  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">' '  <style>' '    .sidebar .app-name-link img { border-radius: 50%; }' '  </style>' '</head>' '<body>' '  <div id="app"></div>' '  <script>' '    window.$docsify = {' "      name: '<img src=\"https://github.com/${OWNER}.png\" width=\"32\" style=\"vertical-align:middle;margin-right:8px;border-radius:50%\">${OWNER}/${REPO_NAME}'," "      nameLink: 'https://github.com/${OWNER}'," "      repo: 'https://github.com/${FULL_REPO}'," '      loadSidebar: true,' '      subMaxLevel: 3,' '      search: {' "        placeholder: 'Search'," "        noData: 'No results'," '        depth: 3' '      },' '      auto2top: true' '    }' '  </script>' '  <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>' '  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>' '</body>' '</html>' > site/index.html
           
           if [ ! -f "site/_sidebar.md" ]; then
             echo "* [Home](/)" > site/_sidebar.md
