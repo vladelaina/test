@@ -45,18 +45,18 @@ jobs:
           cp -rn temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
 
-      - name: Configure for Blog-only mode
+      - name: Configure for Docs-only mode
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          # 直接创建一个干净的博客专用配置文件
+          # 直接创建一个干净的文档专用配置文件
           cat > docusaurus.config.js << CONFIGEOF
           import {themes as prismThemes} from 'prism-react-renderer';
           
           /** @type {import('@docusaurus/types').Config} */
           const config = {
-            title: 'My Blog',
-            tagline: 'Welcome to my blog',
+            title: 'My Docs',
+            tagline: 'Welcome',
             favicon: 'img/favicon.ico',
             url: 'https://${GITHUB_REPOSITORY_OWNER}.github.io',
             baseUrl: '/${REPO_NAME}/',
@@ -73,16 +73,11 @@ jobs:
                 'classic',
                 /** @type {import('@docusaurus/preset-classic').Options} */
                 ({
-                  docs: false,
-                  blog: {
+                  docs: {
                     routeBasePath: '/',
-                    showReadingTime: true,
-                    feedOptions: {
-                      type: ['rss', 'atom'],
-                      xslt: true,
-                    },
-                    onUntruncatedBlogPosts: 'ignore',
+                    sidebarPath: './sidebars.js',
                   },
+                  blog: false,
                   theme: {
                     customCss: './src/css/custom.css',
                   },
@@ -93,7 +88,7 @@ jobs:
               /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
               ({
                 navbar: {
-                  title: 'My Blog',
+                  title: 'My Docs',
                   items: [
                     {
                       href: 'https://github.com/${GITHUB_REPOSITORY}',
@@ -117,8 +112,7 @@ jobs:
           CONFIGEOF
           
           # 删除不需要的文件
-          rm -rf docs src/pages src/components
-          rm -rf blog/2019-* blog/2021-* blog/authors.yml
+          rm -rf blog src/pages src/components
 
       - name: Install dependencies and Build
         run: |
