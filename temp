@@ -55,6 +55,9 @@ jobs:
             cleanUrls: true,
             ignoreDeadLinks: true,
             themeConfig: {
+              search: {
+                provider: 'local'
+              },
               nav: [
                 { text: 'GitHub', link: 'https://github.com/${GITHUB_REPOSITORY}' }
               ],
