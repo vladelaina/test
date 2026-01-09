@@ -75,6 +75,7 @@ jobs:
                 ({
                   docs: {
                     routeBasePath: '/',
+                    path: 'content',
                     sidebarPath: './sidebars.js',
                   },
                   blog: false,
@@ -112,14 +113,28 @@ jobs:
           CONFIGEOF
           
           # 删除不需要的文件
-          rm -rf blog src/pages src/components
+          rm -rf blog src/pages src/components docs
           
-          # 删除示例文档，只保留用户自己的文档
-          rm -rf docs/tutorial-basics docs/tutorial-extras
+          # 创建 content 目录
+          mkdir -p content
           
-          # 如果用户没有自己的 intro.md，创建一个默认的
-          if [ ! -f "docs/intro.md" ] && [ ! -f "docs/index.md" ]; then
-            echo -e "# Welcome\n\nThis is your documentation site." > docs/intro.md
+          # 复制根目录下的 md 文件（除了 README.md）
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} content/ \;
+          
+          # 复制用户的文件夹（排除 . 开头的、node_modules、src、static、build、content）
+          for dir in */; do
+            case "$dir" in
+              .*|node_modules/|src/|static/|build/|content/|temp-site/) ;;
+              *) cp -r "$dir" content/ 2>/dev/null || true ;;
+            esac
+          done
+          
+          # 设置第一个文档为首页
+          FIRST_DOC=$(find content -maxdepth 1 -name "*.md" | head -1)
+          if [ -n "$FIRST_DOC" ]; then
+            if ! grep -q "slug: /" "$FIRST_DOC"; then
+              sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
+            fi
           fi
 
       - name: Install dependencies and Build
