@@ -40,8 +40,9 @@ jobs:
         if: steps.check.outputs.initialized == 'false'
         run: |
           npx create-docusaurus@latest temp-site classic --javascript
-          mv temp-site/* .
-          mv temp-site/.* . 2>/dev/null || true
+          # 使用 cp 而不是 mv，避免覆盖已有文件夹的问题
+          cp -rn temp-site/* . 2>/dev/null || true
+          cp -rn temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
 
       - name: Configure for Blog-only mode
