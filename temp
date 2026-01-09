@@ -38,10 +38,10 @@ jobs:
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           
           mkdir -p temp-site/docs
-          mkdir -p temp-site/public
+          mkdir -p temp-site/docs/public
           
-          curl -sL "https://github.com/${OWNER}.png" -o temp-site/public/logo.png || true
-          curl -sL "https://github.com/${OWNER}.png" -o temp-site/public/favicon.png || true
+          curl -sL "https://github.com/${OWNER}.png" -o temp-site/docs/public/logo.png || true
+          curl -sL "https://github.com/${OWNER}.png" -o temp-site/docs/public/favicon.png || true
           
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} temp-site/docs/ \; 2>/dev/null || true
           if [ -f "README.md" ]; then
