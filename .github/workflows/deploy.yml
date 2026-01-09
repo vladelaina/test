@@ -13,4 +13,4 @@ permissions:
 
 jobs:
   deploy:
-    uses: NekoTick/docship/.github/workflows/docsify.yml@main
+    uses: NekoTick/docship/.github/workflows/fumadocs.yml@main

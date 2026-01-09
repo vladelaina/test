@@ -144,6 +144,19 @@ Before releasing a theme, test with:
 | `item.items.map is not a function` | Rspress sidebar `items: 'auto'` | Use array of items, not string |
 | `Failed to read favicon` (Rspress) | Wrong public directory path | Put assets in `docs/public/` |
 
+## Fumadocs Configuration
+
+- [ ] Fumadocs is based on Next.js - requires `output: 'export'` for static build
+- [ ] Use `basePath` for GitHub Pages deployment (e.g., `/${REPO_NAME}`)
+- [ ] Set `images: { unoptimized: true }` for static export
+- [ ] Content goes in `content/docs/` directory
+- [ ] Output directory is `out` (Next.js static export default)
+- [ ] Every `.mdx` file should have frontmatter with `title` and `description`
+- [ ] Use `create-fumadocs-app` with `--template next --src fumadocs-mdx` for non-interactive setup
+- [ ] Fumadocs MDX is the official content source
+- [ ] Config file is `next.config.mjs` (ESM)
+- [ ] Requires `fumadocs-mdx/next` plugin wrapper
+
 ## Multi-Language Support
 
 - [ ] VitePress/Docusaurus i18n is static - requires manual translation files
