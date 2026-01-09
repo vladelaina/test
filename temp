@@ -42,6 +42,7 @@ jobs:
           npm install vitepress --save-dev
           
           mkdir -p .vitepress
+          mkdir -p .vitepress/theme
           mkdir -p docs
           
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
@@ -60,10 +61,7 @@ jobs:
             ],
             themeConfig: {
               siteTitle: '${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}',
-              logo: {
-                src: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
-                link: 'https://github.com/${GITHUB_REPOSITORY}'
-              },
+              logo: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
               search: {
                 provider: 'local'
               },
@@ -81,6 +79,31 @@ jobs:
           sed -i "s|\${GITHUB_REPOSITORY_OWNER}|${GITHUB_REPOSITORY_OWNER}|g" .vitepress/config.js
           sed -i "s|\${REPO_NAME}|${REPO_NAME}|g" .vitepress/config.js
           sed -i "s|\${GITHUB_REPOSITORY}|${GITHUB_REPOSITORY}|g" .vitepress/config.js
+          
+          cat > .vitepress/theme/index.js << 'THEMEEOF'
+          import DefaultTheme from 'vitepress/theme'
+          
+          export default {
+            extends: DefaultTheme,
+            enhanceApp({ app, router }) {
+              if (typeof window !== 'undefined') {
+                const repoUrl = 'https://github.com/${GITHUB_REPOSITORY}'
+                setTimeout(() => {
+                  const brand = document.querySelector('.VPNavBarTitle')
+                  if (brand) {
+                    brand.style.cursor = 'pointer'
+                    brand.addEventListener('click', (e) => {
+                      e.preventDefault()
+                      window.open(repoUrl, '_blank')
+                    })
+                  }
+                }, 100)
+              }
+            }
+          }
+          THEMEEOF
+          
+          sed -i "s|\${GITHUB_REPOSITORY}|${GITHUB_REPOSITORY}|g" .vitepress/theme/index.js
 
       - name: Copy user content
         run: |
