@@ -49,19 +49,36 @@ jobs:
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          # 修改 docusaurus.config.js：设置 baseUrl 和博客为首页
-          sed -i "s|baseUrl: '/'|baseUrl: '/${REPO_NAME}/'|g" docusaurus.config.js
+          # 使用 Node.js 脚本修改配置
+          node << 'EOF'
+          const fs = require('fs');
+          const repoName = process.env.GITHUB_REPOSITORY.split('/')[1];
           
-          # 配置博客为首页，禁用文档功能
-          sed -i "s|docs: {|docs: false, _docs: {|g" docusaurus.config.js
-          sed -i "s|blog: {|blog: { routeBasePath: '/', |g" docusaurus.config.js
+          let config = fs.readFileSync('docusaurus.config.js', 'utf8');
+          
+          // 设置 baseUrl
+          config = config.replace("baseUrl: '/'", `baseUrl: '/${repoName}/'`);
+          
+          // 禁用 docs，设置 blog 为首页
+          config = config.replace(
+            /docs:\s*\{[^}]*sidebarPath[^}]*\}/s,
+            'docs: false'
+          );
+          config = config.replace(
+            /blog:\s*\{/,
+            "blog: {\n          routeBasePath: '/',"
+          );
+          
+          // 移除导航栏中的 docs 相关链接
+          config = config.replace(/\{type:\s*'docSidebar'[^}]*\},?/g, '');
+          config = config.replace(/\{to:\s*'\/docs\/intro'[^}]*\},?/g, '');
+          
+          fs.writeFileSync('docusaurus.config.js', config);
+          console.log('Config updated successfully');
+          EOF
           
           # 删除默认主页
           rm -f src/pages/index.js src/pages/index.tsx src/pages/index.module.css
-          
-          # 移除导航栏中的文档链接
-          sed -i "s|{type: 'docSidebar'.*}|/* removed */|g" docusaurus.config.js
-          sed -i "s|{to: '/docs/intro'.*}|/* removed */|g" docusaurus.config.js
 
       - name: Install dependencies and Build
         run: |
