@@ -1,4 +1,4 @@
-name: Deploy VitePress to GitHub Pages
+name: Deploy Docusaurus to GitHub Pages
 
 on:
   workflow_call:
@@ -28,8 +28,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-vitepress-${{ runner.os }}
-          restore-keys: npm-vitepress-
+          key: npm-docusaurus-${{ runner.os }}
+          restore-keys: npm-docusaurus-
 
       - name: Backup user content
         run: |
@@ -43,147 +43,123 @@ jobs:
             esac
           done
 
-      - name: Setup VitePress project
+      - name: Check if already initialized
+        id: check
         run: |
-          npm init -y
-          npm install vitepress --save-dev
-          
-          mkdir -p .vitepress
-          mkdir -p .vitepress/theme
-          mkdir -p docs
-          
+          if [ -f "package.json" ]; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Docusaurus project (if not initialized)
+        if: steps.check.outputs.initialized == 'false'
+        run: |
+          npx create-docusaurus@latest temp-site classic --javascript
+          cp -rn temp-site/* . 2>/dev/null || true
+          cp -rn temp-site/.* . 2>/dev/null || true
+          rm -rf temp-site
+
+      - name: Configure for Docs-only mode
+        run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          cat > .vitepress/config.js << 'CONFIGEOF'
-          export default {
+          cat > docusaurus.config.js << CONFIGEOF
+          import {themes as prismThemes} from 'prism-react-renderer';
+          
+          const config = {
             title: '${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}',
-            titleTemplate: ':title',
-            description: 'Documentation',
-            base: '/${REPO_NAME}/',
-            srcDir: 'docs',
-            cleanUrls: true,
-            ignoreDeadLinks: true,
-            head: [
-              ['link', { rel: 'icon', href: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png' }]
-            ],
-            themeConfig: {
-              siteTitle: '${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}',
-              logo: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
-              search: {
-                provider: 'local'
+            tagline: 'Documentation',
+            favicon: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
+            url: 'https://${GITHUB_REPOSITORY_OWNER}.github.io',
+            baseUrl: '/${REPO_NAME}/',
+            organizationName: '${GITHUB_REPOSITORY_OWNER}',
+            projectName: '${REPO_NAME}',
+            onBrokenLinks: 'ignore',
+            markdown: {
+              format: 'md',
+              hooks: {
+                onBrokenMarkdownLinks: 'ignore',
               },
-              nav: [
-                { text: 'GitHub', link: 'https://github.com/${GITHUB_REPOSITORY}' }
+            },
+            i18n: {
+              defaultLocale: 'en',
+              locales: ['en'],
+            },
+            themes: ['@easyops-cn/docusaurus-search-local'],
+            presets: [
+              [
+                'classic',
+                ({
+                  docs: {
+                    routeBasePath: '/',
+                    path: 'content',
+                  },
+                  blog: false,
+                  theme: {
+                    customCss: './src/css/custom.css',
+                  },
+                }),
               ],
-              sidebar: 'auto',
-              socialLinks: [
-                { icon: 'github', link: 'https://github.com/${GITHUB_REPOSITORY_OWNER}' }
-              ]
-            }
-          }
+            ],
+            themeConfig:
+              ({
+                navbar: {
+                  title: '${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}',
+                  logo: {
+                    alt: 'Logo',
+                    src: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
+                    href: 'https://github.com/${GITHUB_REPOSITORY}',
+                    target: '_blank',
+                  },
+                  items: [
+                    {
+                      href: 'https://github.com/${GITHUB_REPOSITORY}',
+                      label: 'GitHub',
+                      position: 'right',
+                    },
+                  ],
+                },
+                prism: {
+                  theme: prismThemes.github,
+                  darkTheme: prismThemes.dracula,
+                },
+              }),
+          };
+          
+          export default config;
           CONFIGEOF
           
-          sed -i "s|\${GITHUB_REPOSITORY_OWNER}|${GITHUB_REPOSITORY_OWNER}|g" .vitepress/config.js
-          sed -i "s|\${REPO_NAME}|${REPO_NAME}|g" .vitepress/config.js
-          sed -i "s|\${GITHUB_REPOSITORY}|${GITHUB_REPOSITORY}|g" .vitepress/config.js
+          rm -rf blog src/pages src/components docs
+          mkdir -p content
+          cp -r /tmp/user-content/* content/ 2>/dev/null || true
           
-          cat > .vitepress/theme/index.js << 'THEMEEOF'
-          import DefaultTheme from 'vitepress/theme'
-          
-          export default {
-            extends: DefaultTheme,
-            enhanceApp({ app, router }) {
-              if (typeof window !== 'undefined') {
-                const repoUrl = 'https://github.com/${GITHUB_REPOSITORY}'
-                const updateLink = () => {
-                  const link = document.querySelector('.VPNavBarTitle a')
-                  if (link) {
-                    link.href = repoUrl
-                    link.target = '_blank'
-                  }
-                }
-                setTimeout(updateLink, 100)
-                router.onAfterRouteChanged = updateLink
-              }
-            }
-          }
-          THEMEEOF
-          
-          sed -i "s|\${GITHUB_REPOSITORY}|${GITHUB_REPOSITORY}|g" .vitepress/theme/index.js
-
-      - name: Copy user content
-        run: |
-          cp -r /tmp/user-content/* docs/ 2>/dev/null || true
-          
-          if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then
-            echo "# Welcome" > docs/index.md
-            echo "" >> docs/index.md
-            echo "Add your markdown files to get started." >> docs/index.md
+          if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
+            echo -e "---\nslug: /\n---\n\n# Welcome\n\nAdd your markdown files to get started." > content/index.md
           else
-            if [ ! -f "docs/index.md" ]; then
-              if [ -f "docs/README.md" ]; then
-                mv docs/README.md docs/index.md
-              else
-                FIRST_DOC=$(find docs -name "*.md" -type f | sort | head -1)
-                if [ -n "$FIRST_DOC" ]; then
-                  cp "$FIRST_DOC" docs/index.md
+            if [ -f "content/index.md" ]; then
+              if ! grep -q "slug: /" "content/index.md"; then
+                sed -i '1s/^/---\nslug: \/\n---\n\n/' "content/index.md"
+              fi
+            elif [ -f "content/README.md" ]; then
+              if ! grep -q "slug: /" "content/README.md"; then
+                sed -i '1s/^/---\nslug: \/\n---\n\n/' "content/README.md"
+              fi
+            else
+              FIRST_DOC=$(find content -name "*.md" -type f | sort | head -1)
+              if [ -n "$FIRST_DOC" ]; then
+                if ! grep -q "slug: /" "$FIRST_DOC"; then
+                  sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
                 fi
               fi
             fi
           fi
 
-      - name: Generate sidebar
+      - name: Install dependencies and Build
         run: |
-          cat > generate-sidebar.js << 'SIDEBAREOF'
-          const fs = require('fs');
-          const path = require('path');
-          
-          function generateSidebar(dir, basePath = '/') {
-            const items = [];
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            
-            entries.sort((a, b) => {
-              if (a.isDirectory() && !b.isDirectory()) return 1;
-              if (!a.isDirectory() && b.isDirectory()) return -1;
-              return a.name.localeCompare(b.name);
-            });
-            
-            for (const entry of entries) {
-              if (entry.name.startsWith('.') || entry.name.startsWith('_')) continue;
-              
-              const fullPath = path.join(dir, entry.name);
-              
-              if (entry.isDirectory()) {
-                const children = generateSidebar(fullPath, `${basePath}${entry.name}/`);
-                if (children.length > 0) {
-                  items.push({
-                    text: entry.name.charAt(0).toUpperCase() + entry.name.slice(1),
-                    collapsed: false,
-                    items: children
-                  });
-                }
-              } else if (entry.name.endsWith('.md') && entry.name !== 'index.md') {
-                const name = entry.name.replace('.md', '');
-                items.push({
-                  text: name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' '),
-                  link: `${basePath}${name}`
-                });
-              }
-            }
-            return items;
-          }
-          
-          const sidebar = generateSidebar('./docs');
-          const configPath = '.vitepress/config.js';
-          let config = fs.readFileSync(configPath, 'utf8');
-          config = config.replace("sidebar: 'auto'", `sidebar: ${JSON.stringify(sidebar, null, 2)}`);
-          fs.writeFileSync(configPath, config);
-          SIDEBAREOF
-          
-          node generate-sidebar.js
-
-      - name: Build
-        run: npx vitepress build
+          npm install
+          npm install @easyops-cn/docusaurus-search-local --save
+          npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -191,7 +167,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .vitepress/dist
+          path: build
 
   deploy:
     environment:
