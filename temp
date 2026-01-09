@@ -93,9 +93,6 @@ jobs:
               ({
                 navbar: {
                   title: '${GITHUB_REPOSITORY_OWNER}',
-                  logo: {
-                    href: 'https://github.com/${GITHUB_REPOSITORY_OWNER}',
-                  },
                   items: [
                     {
                       href: 'https://github.com/${GITHUB_REPOSITORY}',
