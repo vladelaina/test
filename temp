@@ -40,7 +40,6 @@ jobs:
           mkdir -p temp-site/src/content/docs
           mkdir -p temp-site/src/assets
           mkdir -p temp-site/public
-          mkdir -p temp-site/src/components
           
           curl -sL "https://github.com/${OWNER}.png" -o temp-site/src/assets/avatar.png || true
           curl -sL "https://github.com/${OWNER}.png" -o temp-site/public/favicon.png || true
@@ -75,9 +74,7 @@ jobs:
           
           printf '%s\n' '{' '  "name": "temp-site",' '  "type": "module",' '  "version": "0.0.0",' '  "scripts": {' '    "build": "astro build"' '  },' '  "dependencies": {' '    "astro": "^5.0.0",' '    "@astrojs/starlight": "^0.32.0",' '    "sharp": "^0.33.0"' '  }' '}' > package.json
           
-          printf '%s\n' '---' "import type { Props } from '@astrojs/starlight/props';" "import Default from '@astrojs/starlight/components/SiteTitle.astro';" '---' '' "<a href=\"https://github.com/${OWNER}\" class=\"site-title sl-flex\">" '  <Default {...Astro.props}><slot /></Default>' '</a>' '' '<style>' '  .site-title { text-decoration: none; color: inherit; }' '</style>' > src/components/SiteTitle.astro
-          
-          printf '%s\n' "import { defineConfig } from 'astro/config';" "import starlight from '@astrojs/starlight';" '' "export default defineConfig({" "  site: 'https://${OWNER}.github.io/${REPO_NAME}'," "  base: '/${REPO_NAME}/'," "  integrations: [" "    starlight({" "      title: '${OWNER}/${REPO_NAME}'," "      logo: {" "        src: './src/assets/avatar.png'," "      }," "      favicon: '/favicon.png'," "      social: {" "        github: 'https://github.com/${OWNER}/${REPO_NAME}'," "      }," "      sidebar: [" "        {" "          label: 'Docs'," "          autogenerate: { directory: '.' }," "        }," "      ]," "      credits: false," "      components: {" "        SiteTitle: './src/components/SiteTitle.astro'," "      }," "    })," "  ]," "});" > astro.config.mjs
+          printf '%s\n' "import { defineConfig } from 'astro/config';" "import starlight from '@astrojs/starlight';" '' "export default defineConfig({" "  site: 'https://${OWNER}.github.io'," "  base: '/${REPO_NAME}'," "  trailingSlash: 'always'," "  integrations: [" "    starlight({" "      title: '${OWNER}/${REPO_NAME}'," "      logo: {" "        src: './src/assets/avatar.png'," "      }," "      favicon: '/favicon.png'," "      social: {" "        github: 'https://github.com/${OWNER}/${REPO_NAME}'," "      }," "      sidebar: [" "        {" "          label: 'Docs'," "          autogenerate: { directory: '.' }," "        }," "      ]," "      credits: false," "    })," "  ]," "});" > astro.config.mjs
           
           npm install
           npm run build
