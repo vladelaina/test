@@ -69,16 +69,29 @@ jobs:
             "blog: {\n          routeBasePath: '/',"
           );
           
-          // 移除导航栏中的 docs 相关链接
-          config = config.replace(/\{type:\s*'docSidebar'[^}]*\},?/g, '');
-          config = config.replace(/\{to:\s*'\/docs\/intro'[^}]*\},?/g, '');
+          // 清空导航栏左侧的 items（移除所有 docs 相关链接）
+          config = config.replace(
+            /items:\s*\[\s*\{[^[\]]*type:\s*'docSidebar'[^[\]]*\}\s*,/g,
+            'items: ['
+          );
+          
+          // 移除所有 docSidebar 类型的导航项
+          config = config.replace(/\{\s*type:\s*'docSidebar'[^}]*\}\s*,?/g, '');
+          
+          // 移除指向 /docs 的链接
+          config = config.replace(/\{\s*to:\s*'\/docs[^}]*\}\s*,?/g, '');
           
           fs.writeFileSync('docusaurus.config.js', config);
           console.log('Config updated successfully');
           EOF
           
-          # 删除默认主页
+          # 删除默认主页和 docs 文件夹
           rm -f src/pages/index.js src/pages/index.tsx src/pages/index.module.css
+          rm -rf src/pages/markdown-page.md
+          rm -rf docs
+          
+          # 删除示例博客文章，只保留用户自己的博客
+          rm -rf blog/2019-* blog/2021-* blog/authors.yml
 
       - name: Install dependencies and Build
         run: |
