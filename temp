@@ -135,23 +135,33 @@ jobs:
           cp -r /tmp/user-content/* content/ 2>/dev/null || true
           
           if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
-            echo -e "---\nslug: /\n---\n\n# Welcome\n\nAdd your markdown files to get started." > content/index.md
+            cat > content/index.md << 'INDEXEOF'
+---
+slug: /
+---
+
+# Welcome
+
+Add your markdown files to get started.
+INDEXEOF
           else
             if [ -f "content/index.md" ]; then
-              if ! grep -q "slug: /" "content/index.md"; then
-                sed -i '1s/^/---\nslug: \/\n---\n\n/' "content/index.md"
-              fi
+              TARGET="content/index.md"
             elif [ -f "content/README.md" ]; then
-              if ! grep -q "slug: /" "content/README.md"; then
-                sed -i '1s/^/---\nslug: \/\n---\n\n/' "content/README.md"
-              fi
+              TARGET="content/README.md"
             else
-              FIRST_DOC=$(find content -name "*.md" -type f | sort | head -1)
-              if [ -n "$FIRST_DOC" ]; then
-                if ! grep -q "slug: /" "$FIRST_DOC"; then
-                  sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
-                fi
-              fi
+              TARGET=$(find content -name "*.md" -type f | sort | head -1)
+            fi
+            
+            if [ -n "$TARGET" ] && ! grep -q "^slug: /" "$TARGET"; then
+              CONTENT=$(cat "$TARGET")
+              cat > "$TARGET" << FRONTMATTEREOF
+---
+slug: /
+---
+
+$CONTENT
+FRONTMATTEREOF
             fi
           fi
 
