@@ -108,6 +108,9 @@ jobs:
           plugins:
             - search
           
+          extra:
+            generator: false
+          
           markdown_extensions:
             - pymdownx.highlight:
                 anchor_linenums: true
