@@ -1,0 +1,154 @@
+name: Deploy Docusaurus to GitHub Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Check if already initialized
+        id: check
+        run: |
+          if [ -f "package.json" ]; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Docusaurus project (if not initialized)
+        if: steps.check.outputs.initialized == 'false'
+        run: |
+          npx create-docusaurus@latest temp-site classic --javascript
+          cp -rn temp-site/* . 2>/dev/null || true
+          cp -rn temp-site/.* . 2>/dev/null || true
+          rm -rf temp-site
+
+      - name: Configure for Docs-only mode
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          
+          cat > docusaurus.config.js << CONFIGEOF
+          import {themes as prismThemes} from 'prism-react-renderer';
+          
+          const config = {
+            title: '${GITHUB_REPOSITORY_OWNER}',
+            tagline: 'Welcome',
+            favicon: 'img/favicon.ico',
+            url: 'https://${GITHUB_REPOSITORY_OWNER}.github.io',
+            baseUrl: '/${REPO_NAME}/',
+            organizationName: '${GITHUB_REPOSITORY_OWNER}',
+            projectName: '${REPO_NAME}',
+            onBrokenLinks: 'ignore',
+            onBrokenMarkdownLinks: 'ignore',
+            i18n: {
+              defaultLocale: 'en',
+              locales: ['en'],
+            },
+            presets: [
+              [
+                'classic',
+                ({
+                  docs: {
+                    routeBasePath: '/',
+                    path: 'content',
+                    sidebarPath: './sidebars.js',
+                  },
+                  blog: false,
+                  theme: {
+                    customCss: './src/css/custom.css',
+                  },
+                }),
+              ],
+            ],
+            themeConfig:
+              ({
+                navbar: {
+                  title: '${GITHUB_REPOSITORY_OWNER}',
+                  logo: {
+                    href: 'https://github.com/${GITHUB_REPOSITORY_OWNER}',
+                  },
+                  items: [
+                    {
+                      href: 'https://github.com/${GITHUB_REPOSITORY}',
+                      label: 'GitHub',
+                      position: 'right',
+                    },
+                  ],
+                },
+                prism: {
+                  theme: prismThemes.github,
+                  darkTheme: prismThemes.dracula,
+                },
+              }),
+          };
+          
+          export default config;
+          CONFIGEOF
+          
+          rm -rf blog src/pages src/components docs
+          mkdir -p content
+          cp -r /tmp/user-content/* content/ 2>/dev/null || true
+          
+          if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
+            echo -e "---\nslug: /\n---\n\n# Welcome\n\nAdd your markdown files to get started." > content/index.md
+          else
+            FIRST_DOC=$(find content -name "*.md" | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              if ! grep -q "slug: /" "$FIRST_DOC"; then
+                sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
+              fi
+            fi
+          fi
+
+      - name: Install dependencies and Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
