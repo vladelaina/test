@@ -69,17 +69,21 @@ jobs:
             "blog: {\n          routeBasePath: '/',"
           );
           
-          // 清空导航栏左侧的 items（移除所有 docs 相关链接）
+          // 替换整个 navbar items 数组，只保留 GitHub 链接
           config = config.replace(
-            /items:\s*\[\s*\{[^[\]]*type:\s*'docSidebar'[^[\]]*\}\s*,/g,
-            'items: ['
+            /navbar:\s*\{([^}]*items:\s*\[)[^\]]*\]/s,
+            `navbar: {$1
+              {
+                href: 'https://github.com/facebook/docusaurus',
+                label: 'GitHub',
+                position: 'right',
+              },
+            ]`
           );
           
-          // 移除所有 docSidebar 类型的导航项
-          config = config.replace(/\{\s*type:\s*'docSidebar'[^}]*\}\s*,?/g, '');
-          
-          // 移除指向 /docs 的链接
-          config = config.replace(/\{\s*to:\s*'\/docs[^}]*\}\s*,?/g, '');
+          // 移除 footer 中指向 /docs 和 /blog 的链接
+          config = config.replace(/\{\s*label:[^}]*to:\s*'\/docs[^}]*\}\s*,?/g, '');
+          config = config.replace(/\{\s*label:[^}]*to:\s*'\/blog[^}]*\}\s*,?/g, '');
           
           fs.writeFileSync('docusaurus.config.js', config);
           console.log('Config updated successfully');
