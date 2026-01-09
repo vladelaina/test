@@ -49,52 +49,75 @@ jobs:
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          # 使用 Node.js 脚本修改配置
-          node << 'EOF'
-          const fs = require('fs');
-          const repoName = process.env.GITHUB_REPOSITORY.split('/')[1];
+          # 直接创建一个干净的博客专用配置文件
+          cat > docusaurus.config.js << CONFIGEOF
+          import {themes as prismThemes} from 'prism-react-renderer';
           
-          let config = fs.readFileSync('docusaurus.config.js', 'utf8');
+          /** @type {import('@docusaurus/types').Config} */
+          const config = {
+            title: 'My Blog',
+            tagline: 'Welcome to my blog',
+            favicon: 'img/favicon.ico',
+            url: 'https://${GITHUB_REPOSITORY_OWNER}.github.io',
+            baseUrl: '/${REPO_NAME}/',
+            organizationName: '${GITHUB_REPOSITORY_OWNER}',
+            projectName: '${REPO_NAME}',
+            onBrokenLinks: 'throw',
+            onBrokenMarkdownLinks: 'warn',
+            i18n: {
+              defaultLocale: 'en',
+              locales: ['en'],
+            },
+            presets: [
+              [
+                'classic',
+                /** @type {import('@docusaurus/preset-classic').Options} */
+                ({
+                  docs: false,
+                  blog: {
+                    routeBasePath: '/',
+                    showReadingTime: true,
+                    feedOptions: {
+                      type: ['rss', 'atom'],
+                      xslt: true,
+                    },
+                    onUntruncatedBlogPosts: 'ignore',
+                  },
+                  theme: {
+                    customCss: './src/css/custom.css',
+                  },
+                }),
+              ],
+            ],
+            themeConfig:
+              /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
+              ({
+                navbar: {
+                  title: 'My Blog',
+                  items: [
+                    {
+                      href: 'https://github.com/${GITHUB_REPOSITORY}',
+                      label: 'GitHub',
+                      position: 'right',
+                    },
+                  ],
+                },
+                footer: {
+                  style: 'dark',
+                  copyright: 'Built with Docusaurus.',
+                },
+                prism: {
+                  theme: prismThemes.github,
+                  darkTheme: prismThemes.dracula,
+                },
+              }),
+          };
           
-          // 设置 baseUrl
-          config = config.replace("baseUrl: '/'", `baseUrl: '/${repoName}/'`);
+          export default config;
+          CONFIGEOF
           
-          // 禁用 docs，设置 blog 为首页
-          config = config.replace(
-            /docs:\s*\{[^}]*sidebarPath[^}]*\}/s,
-            'docs: false'
-          );
-          config = config.replace(
-            /blog:\s*\{/,
-            "blog: {\n          routeBasePath: '/',"
-          );
-          
-          // 替换整个 navbar items 数组，只保留 GitHub 链接
-          config = config.replace(
-            /navbar:\s*\{([^}]*items:\s*\[)[^\]]*\]/s,
-            `navbar: {$1
-              {
-                href: 'https://github.com/facebook/docusaurus',
-                label: 'GitHub',
-                position: 'right',
-              },
-            ]`
-          );
-          
-          // 移除 footer 中指向 /docs 和 /blog 的链接
-          config = config.replace(/\{\s*label:[^}]*to:\s*'\/docs[^}]*\}\s*,?/g, '');
-          config = config.replace(/\{\s*label:[^}]*to:\s*'\/blog[^}]*\}\s*,?/g, '');
-          
-          fs.writeFileSync('docusaurus.config.js', config);
-          console.log('Config updated successfully');
-          EOF
-          
-          # 删除默认主页和 docs 文件夹
-          rm -f src/pages/index.js src/pages/index.tsx src/pages/index.module.css
-          rm -rf src/pages/markdown-page.md
-          rm -rf docs
-          
-          # 删除示例博客文章，只保留用户自己的博客
+          # 删除不需要的文件
+          rm -rf docs src/pages src/components
           rm -rf blog/2019-* blog/2021-* blog/authors.yml
 
       - name: Install dependencies and Build
