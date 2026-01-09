@@ -128,9 +128,6 @@ jobs:
           
           npm install
           npm run build
-          
-          echo "=== dist contents ==="
-          find dist -name "*.html" | head -20
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
