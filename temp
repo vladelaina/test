@@ -1,4 +1,4 @@
-name: Deploy MkDocs Material to GitHub Pages
+name: Deploy Docsify to GitHub Pages
 
 on:
   workflow_call:
@@ -19,107 +19,87 @@ jobs:
       - name: Checkout your repo
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-mkdocs-${{ runner.os }}
-          restore-keys: pip-mkdocs-
-
-      - name: Install MkDocs Material
-        run: pip install mkdocs-material
-
-      - name: Backup user content
-        run: |
-          mkdir -p /tmp/user-content
-          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
-          for dir in */; do
-            case "$dir" in
-              .*) ;;
-              node_modules) ;;
-              __pycache__) ;;
-              site) ;;
-              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
-            esac
-          done
-
-      - name: Setup MkDocs project
+      - name: Setup Docsify
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          mkdir -p docs
-          cp -r /tmp/user-content/* docs/ 2>/dev/null || true
+          mkdir -p site
           
-          if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then
-            printf '%s\n' '# Welcome' '' 'Add your markdown files to get started.' > docs/index.md
-          else
-            if [ ! -f "docs/index.md" ]; then
-              if [ -f "docs/README.md" ]; then
-                mv docs/README.md docs/index.md
+          find . -maxdepth 1 -name "*.md" -exec cp {} site/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*) ;;
+              site) ;;
+              *) cp -r "$dir" site/ 2>/dev/null || true ;;
+            esac
+          done
+          
+          if [ ! -f "site/README.md" ]; then
+            if [ -f "site/index.md" ]; then
+              cp site/index.md site/README.md
+            else
+              FIRST_DOC=$(find site -name "*.md" -type f | sort | head -1)
+              if [ -n "$FIRST_DOC" ]; then
+                cp "$FIRST_DOC" site/README.md
               else
-                FIRST_DOC=$(find docs -name "*.md" -type f | sort | head -1)
-                if [ -n "$FIRST_DOC" ]; then
-                  cp "$FIRST_DOC" docs/index.md
-                fi
+                printf '%s\n' '# Welcome' '' 'Add your markdown files to get started.' > site/README.md
               fi
             fi
           fi
           
-          cat > mkdocs.yml << CONFIGEOF
-          site_name: ${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}
-          site_url: https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}/
-          repo_url: https://github.com/${GITHUB_REPOSITORY}
-          repo_name: ${GITHUB_REPOSITORY}
+          cat > site/index.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SITE_TITLE</title>
+  <link rel="icon" href="https://github.com/GITHUB_OWNER.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  <style>
+    .sidebar .app-name-link img { border-radius: 50%; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.$docsify = {
+      name: '<img src="https://github.com/GITHUB_OWNER.png" width="32" style="vertical-align:middle;margin-right:8px;border-radius:50%">SITE_TITLE',
+      nameLink: 'https://github.com/GITHUB_REPO',
+      repo: 'https://github.com/GITHUB_REPO',
+      loadSidebar: true,
+      subMaxLevel: 3,
+      search: {
+        placeholder: 'Search',
+        noData: 'No results',
+        depth: 3
+      },
+      auto2top: true
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
+</body>
+</html>
+HTMLEOF
           
-          theme:
-            name: material
-            logo: https://github.com/${GITHUB_REPOSITORY_OWNER}.png
-            favicon: https://github.com/${GITHUB_REPOSITORY_OWNER}.png
-            features:
-              - navigation.instant
-              - navigation.tracking
-              - navigation.sections
-              - navigation.expand
-              - search.suggest
-              - search.highlight
-              - content.code.copy
-            palette:
-              - scheme: default
-                primary: indigo
-                accent: indigo
-                toggle:
-                  icon: material/brightness-7
-                  name: Switch to dark mode
-              - scheme: slate
-                primary: indigo
-                accent: indigo
-                toggle:
-                  icon: material/brightness-4
-                  name: Switch to light mode
+          sed -i "s|SITE_TITLE|${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}|g" site/index.html
+          sed -i "s|GITHUB_OWNER|${GITHUB_REPOSITORY_OWNER}|g" site/index.html
+          sed -i "s|GITHUB_REPO|${GITHUB_REPOSITORY}|g" site/index.html
           
-          plugins:
-            - search
+          if [ ! -f "site/_sidebar.md" ]; then
+            echo "* [Home](/)" > site/_sidebar.md
+            find site -name "*.md" ! -name "README.md" ! -name "_sidebar.md" ! -name "_navbar.md" -type f | sort | while read f; do
+              name=$(basename "$f" .md)
+              path="${f#site/}"
+              echo "* [${name}](/${path})" >> site/_sidebar.md
+            done
+          fi
           
-          extra:
-            generator: false
-          
-          markdown_extensions:
-            - pymdownx.highlight:
-                anchor_linenums: true
-            - pymdownx.superfences
-            - pymdownx.tabbed:
-                alternate_style: true
-            - admonition
-            - pymdownx.details
-          CONFIGEOF
-
-      - name: Build
-        run: mkdocs build
+          touch site/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
