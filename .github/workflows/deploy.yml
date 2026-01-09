@@ -22,23 +22,17 @@ jobs:
       - name: Checkout your repo
         uses: actions/checkout@v4
 
-      - name: Clone Docusaurus template
-        run: |
-          npx create-docusaurus@latest docusaurus-site classic --skip-install
-          # 如果你的 main 分支有自定义的 docs 文件夹，可以覆盖进去
-          # cp -r docs/* docusaurus-site/docs/ 2>/dev/null || true
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: docusaurus-site/package-lock.json
 
-      - name: Install and Build
-        working-directory: docusaurus-site
+      - name: Clone Docusaurus and Build
         run: |
-          npm install
+          npx create-docusaurus@latest docusaurus-site classic
+          # 如果你的 main 分支有自定义的 docs 文件夹，可以覆盖进去
+          # cp -r docs/* docusaurus-site/docs/ 2>/dev/null || true
+          cd docusaurus-site
           npm run build
 
       - name: Setup Pages
