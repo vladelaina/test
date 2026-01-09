@@ -88,9 +88,9 @@ jobs:
                   src: './src/assets/avatar.png',
                 },
                 favicon: '/favicon.png',
-                social: {
-                  github: 'https://github.com/${OWNER}/${REPO_NAME}',
-                },
+                social: [
+                  { icon: 'github', label: 'GitHub', href: 'https://github.com/${OWNER}/${REPO_NAME}' },
+                ],
                 sidebar: [
                   {
                     label: 'Docs',
