@@ -71,7 +71,7 @@ jobs:
           
           /** @type {import('@docusaurus/types').Config} */
           const config = {
-            title: 'My Docs',
+            title: '${GITHUB_REPOSITORY_OWNER}',
             tagline: 'Welcome',
             favicon: 'img/favicon.ico',
             url: 'https://${GITHUB_REPOSITORY_OWNER}.github.io',
@@ -105,7 +105,7 @@ jobs:
               /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
               ({
                 navbar: {
-                  title: 'My Docs',
+                  title: '${GITHUB_REPOSITORY_OWNER}',
                   items: [
                     {
                       href: 'https://github.com/${GITHUB_REPOSITORY}',
@@ -113,10 +113,6 @@ jobs:
                       position: 'right',
                     },
                   ],
-                },
-                footer: {
-                  style: 'dark',
-                  copyright: 'Built with Docusaurus.',
                 },
                 prism: {
                   theme: prismThemes.github,
