@@ -95,7 +95,8 @@ jobs:
           for f in src/content/docs/*.md; do
             if [ -f "$f" ] && [ "$(basename "$f")" != "index.md" ]; then
               FILENAME=$(basename "$f" .md)
-              SIDEBAR_ITEMS="${SIDEBAR_ITEMS} { slug: '${FILENAME}' },"
+              SLUG=$(echo "$FILENAME" | tr '[:upper:]' '[:lower:]')
+              SIDEBAR_ITEMS="${SIDEBAR_ITEMS} { slug: '${SLUG}' },"
             fi
           done
           
