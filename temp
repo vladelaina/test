@@ -1,4 +1,4 @@
-name: Deploy Docusaurus to GitHub Pages
+name: Deploy VitePress to GitHub Pages
 
 on:
   workflow_call:
@@ -31,119 +31,67 @@ jobs:
           for dir in */; do
             case "$dir" in
               .*) ;;
+              node_modules) ;;
               *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
             esac
           done
 
-      - name: Check if already initialized
-        id: check
+      - name: Setup VitePress project
         run: |
-          if [ -f "package.json" ]; then
-            echo "initialized=true" >> $GITHUB_OUTPUT
-          else
-            echo "initialized=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create Docusaurus project (if not initialized)
-        if: steps.check.outputs.initialized == 'false'
-        run: |
-          npx create-docusaurus@latest temp-site classic --javascript
-          cp -rn temp-site/* . 2>/dev/null || true
-          cp -rn temp-site/.* . 2>/dev/null || true
-          rm -rf temp-site
-
-      - name: Configure for Docs-only mode
-        run: |
+          npm init -y
+          npm install vitepress --save-dev
+          
+          mkdir -p .vitepress
+          mkdir -p docs
+          
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          cat > docusaurus.config.js << CONFIGEOF
-          import {themes as prismThemes} from 'prism-react-renderer';
-          
-          const config = {
+          cat > .vitepress/config.js << 'CONFIGEOF'
+          export default {
             title: '${GITHUB_REPOSITORY_OWNER}',
-            tagline: 'Welcome',
-            favicon: 'img/favicon.ico',
-            url: 'https://${GITHUB_REPOSITORY_OWNER}.github.io',
-            baseUrl: '/${REPO_NAME}/',
-            organizationName: '${GITHUB_REPOSITORY_OWNER}',
-            projectName: '${REPO_NAME}',
-            onBrokenLinks: 'ignore',
-            markdown: {
-              format: 'md',
-              hooks: {
-                onBrokenMarkdownLinks: 'ignore',
-              },
-            },
-            i18n: {
-              defaultLocale: 'en',
-              locales: ['en'],
-            },
-            presets: [
-              [
-                'classic',
-                ({
-                  docs: {
-                    routeBasePath: '/',
-                    path: 'content',
-                  },
-                  blog: false,
-                  theme: {
-                    customCss: './src/css/custom.css',
-                  },
-                }),
+            description: 'Documentation',
+            base: '/${REPO_NAME}/',
+            srcDir: 'docs',
+            cleanUrls: true,
+            themeConfig: {
+              nav: [
+                { text: 'GitHub', link: 'https://github.com/${GITHUB_REPOSITORY}' }
               ],
-            ],
-            themeConfig:
-              ({
-                navbar: {
-                  title: '${GITHUB_REPOSITORY_OWNER}',
-                  items: [
-                    {
-                      href: 'https://github.com/${GITHUB_REPOSITORY}',
-                      label: 'GitHub',
-                      position: 'right',
-                    },
-                  ],
-                },
-                prism: {
-                  theme: prismThemes.github,
-                  darkTheme: prismThemes.dracula,
-                },
-              }),
-          };
-          
-          export default config;
+              sidebar: 'auto',
+              socialLinks: [
+                { icon: 'github', link: 'https://github.com/${GITHUB_REPOSITORY_OWNER}' }
+              ]
+            }
+          }
           CONFIGEOF
           
-          rm -rf blog src/pages src/components docs
-          mkdir -p content
-          cp -r /tmp/user-content/* content/ 2>/dev/null || true
+          sed -i "s|\${GITHUB_REPOSITORY_OWNER}|${GITHUB_REPOSITORY_OWNER}|g" .vitepress/config.js
+          sed -i "s|\${REPO_NAME}|${REPO_NAME}|g" .vitepress/config.js
+          sed -i "s|\${GITHUB_REPOSITORY}|${GITHUB_REPOSITORY}|g" .vitepress/config.js
+
+      - name: Copy user content
+        run: |
+          cp -r /tmp/user-content/* docs/ 2>/dev/null || true
           
-          if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
-            echo -e "---\nslug: /\n---\n\n# Welcome\n\nAdd your markdown files to get started." > content/index.md
+          if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then
+            echo "# Welcome" > docs/index.md
+            echo "" >> docs/index.md
+            echo "Add your markdown files to get started." >> docs/index.md
           else
-            if [ -f "content/index.md" ]; then
-              if ! grep -q "slug: /" "content/index.md"; then
-                sed -i '1s/^/---\nslug: \/\n---\n\n/' "content/index.md"
-              fi
-            elif [ -f "content/README.md" ]; then
-              if ! grep -q "slug: /" "content/README.md"; then
-                sed -i '1s/^/---\nslug: \/\n---\n\n/' "content/README.md"
-              fi
-            else
-              FIRST_DOC=$(find content -name "*.md" -type f | sort | head -1)
-              if [ -n "$FIRST_DOC" ]; then
-                if ! grep -q "slug: /" "$FIRST_DOC"; then
-                  sed -i '1s/^/---\nslug: \/\n---\n\n/' "$FIRST_DOC"
+            if [ ! -f "docs/index.md" ]; then
+              if [ -f "docs/README.md" ]; then
+                mv docs/README.md docs/index.md
+              else
+                FIRST_DOC=$(find docs -name "*.md" -type f | sort | head -1)
+                if [ -n "$FIRST_DOC" ]; then
+                  cp "$FIRST_DOC" docs/index.md
                 fi
               fi
             fi
           fi
 
-      - name: Install dependencies and Build
-        run: |
-          npm install
-          npm run build
+      - name: Build
+        run: npx vitepress build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -151,7 +99,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build
+          path: .vitepress/dist
 
   deploy:
     environment:
