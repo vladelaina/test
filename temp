@@ -135,15 +135,7 @@ jobs:
           cp -r /tmp/user-content/* content/ 2>/dev/null || true
           
           if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
-            cat > content/index.md << 'INDEXEOF'
----
-slug: /
----
-
-# Welcome
-
-Add your markdown files to get started.
-INDEXEOF
+            printf '%s\n' '---' 'slug: /' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > content/index.md
           else
             if [ -f "content/index.md" ]; then
               TARGET="content/index.md"
@@ -154,14 +146,10 @@ INDEXEOF
             fi
             
             if [ -n "$TARGET" ] && ! grep -q "^slug: /" "$TARGET"; then
-              CONTENT=$(cat "$TARGET")
-              cat > "$TARGET" << FRONTMATTEREOF
----
-slug: /
----
-
-$CONTENT
-FRONTMATTEREOF
+              TMPFILE=$(mktemp)
+              printf '%s\n' '---' 'slug: /' '---' '' > "$TMPFILE"
+              cat "$TARGET" >> "$TMPFILE"
+              mv "$TMPFILE" "$TARGET"
             fi
           fi
 
