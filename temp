@@ -37,16 +37,16 @@ jobs:
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           
-          mkdir -p temp-site/src/content/docs
-          mkdir -p temp-site/src/assets
-          mkdir -p temp-site/public
+          npm create astro@latest temp-site -- --template starlight --no-install --no-git -y
+          
+          rm -rf temp-site/src/content/docs/*
           
           curl -sL "https://github.com/${OWNER}.png" -o temp-site/src/assets/avatar.png || true
           curl -sL "https://github.com/${OWNER}.png" -o temp-site/public/favicon.png || true
           
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} temp-site/src/content/docs/ \; 2>/dev/null || true
           if [ -f "README.md" ]; then
-            cp README.md temp-site/src/content/docs/index.md
+            cp README.md temp-site/src/content/docs/index.mdx
           fi
           
           for dir in */; do
@@ -56,38 +56,58 @@ jobs:
             esac
           done
           
-          if [ ! -f "temp-site/src/content/docs/index.md" ]; then
+          if [ ! -f "temp-site/src/content/docs/index.mdx" ]; then
             FIRST_DOC=$(find temp-site/src/content/docs -name "*.md" -type f | sort | head -1)
             if [ -n "$FIRST_DOC" ]; then
-              cp "$FIRST_DOC" temp-site/src/content/docs/index.md
-            else
-              printf '%s\n' '---' 'title: Welcome' 'template: splash' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > temp-site/src/content/docs/index.md
+              cp "$FIRST_DOC" temp-site/src/content/docs/index.mdx
             fi
           fi
           
-          if ! head -5 temp-site/src/content/docs/index.md | grep -q "^---"; then
-            TEMP_CONTENT=$(cat temp-site/src/content/docs/index.md)
-            printf '%s\n' '---' 'title: Home' '---' '' "$TEMP_CONTENT" > temp-site/src/content/docs/index.md
+          if [ ! -f "temp-site/src/content/docs/index.mdx" ]; then
+            printf '%s\n' '---' 'title: Welcome to Docs' 'description: Get started with your documentation.' '---' '' 'Welcome! Add your markdown files to get started.' > temp-site/src/content/docs/index.mdx
+          fi
+          
+          if ! head -3 temp-site/src/content/docs/index.mdx | grep -q "^---"; then
+            TEMP_CONTENT=$(cat temp-site/src/content/docs/index.mdx)
+            printf '%s\n' '---' 'title: Home' 'description: Documentation homepage.' '---' '' "$TEMP_CONTENT" > temp-site/src/content/docs/index.mdx
           fi
           
           cd temp-site
           
-          printf '%s\n' '{' '  "name": "temp-site",' '  "type": "module",' '  "version": "0.0.0",' '  "scripts": {' '    "build": "astro build"' '  },' '  "dependencies": {' '    "astro": "^5.0.0",' '    "@astrojs/starlight": "^0.32.0",' '    "sharp": "^0.33.0"' '  }' '}' > package.json
+          cat > astro.config.mjs << CONFIGEOF
+          import { defineConfig } from 'astro/config';
+          import starlight from '@astrojs/starlight';
           
-          printf '%s\n' "import { defineConfig } from 'astro/config';" "import starlight from '@astrojs/starlight';" '' "export default defineConfig({" "  site: 'https://${OWNER}.github.io'," "  base: '/${REPO_NAME}'," "  trailingSlash: 'always'," "  integrations: [" "    starlight({" "      title: '${OWNER}/${REPO_NAME}'," "      logo: {" "        src: './src/assets/avatar.png'," "      }," "      favicon: '/favicon.png'," "      social: {" "        github: 'https://github.com/${OWNER}/${REPO_NAME}'," "      }," "      sidebar: [" "        {" "          label: 'Docs'," "          autogenerate: { directory: '/' }," "        }," "      ]," "      credits: false," "    })," "  ]," "});" > astro.config.mjs
-          
-          echo "=== Content docs ==="
-          ls -la src/content/docs/
-          echo "=== index.md content ==="
-          head -20 src/content/docs/index.md || echo "No index.md"
+          export default defineConfig({
+            site: 'https://${OWNER}.github.io',
+            base: '/${REPO_NAME}',
+            integrations: [
+              starlight({
+                title: '${OWNER}/${REPO_NAME}',
+                logo: {
+                  src: './src/assets/avatar.png',
+                },
+                favicon: '/favicon.png',
+                social: {
+                  github: 'https://github.com/${OWNER}/${REPO_NAME}',
+                },
+                sidebar: [
+                  {
+                    label: 'Docs',
+                    autogenerate: { directory: '.' },
+                  },
+                ],
+                credits: false,
+              }),
+            ],
+          });
+          CONFIGEOF
           
           npm install
           npm run build
           
-          echo "=== Build output ==="
-          ls -la dist/
           echo "=== dist contents ==="
-          find dist -type f | head -20
+          find dist -name "*.html" | head -20
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
