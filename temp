@@ -1,4 +1,4 @@
-name: Deploy Starlight to GitHub Pages
+name: Deploy Rspress to GitHub Pages
 
 on:
   workflow_call:
@@ -28,35 +28,34 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-starlight-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-npm-rspress-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-npm-starlight-
+            ${{ runner.os }}-npm-rspress-
 
-      - name: Setup Starlight
+      - name: Setup Rspress
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           
-          npm create astro@latest temp-site -- --template starlight --no-install --no-git -y
+          mkdir -p temp-site/docs
+          mkdir -p temp-site/public
           
-          rm -rf temp-site/src/content/docs/*
-          
-          curl -sL "https://github.com/${OWNER}.png" -o temp-site/src/assets/avatar.png || true
+          curl -sL "https://github.com/${OWNER}.png" -o temp-site/public/logo.png || true
           curl -sL "https://github.com/${OWNER}.png" -o temp-site/public/favicon.png || true
           
-          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} temp-site/src/content/docs/ \; 2>/dev/null || true
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} temp-site/docs/ \; 2>/dev/null || true
           if [ -f "README.md" ]; then
-            cp README.md temp-site/src/content/docs/index.mdx
+            cp README.md temp-site/docs/index.md
           fi
           
           for dir in */; do
             case "$dir" in
               .*|temp-site/|node_modules/) ;;
-              *) cp -r "$dir" temp-site/src/content/docs/ 2>/dev/null || true ;;
+              *) cp -r "$dir" temp-site/docs/ 2>/dev/null || true ;;
             esac
           done
           
-          find temp-site/src/content/docs -name "*.md" -type f | while read f; do
+          find temp-site/docs -name "*.md" -type f | while read f; do
             if ! head -3 "$f" | grep -q "^---"; then
               FILENAME=$(basename "$f" .md)
               TITLE=$(echo "$FILENAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
@@ -65,64 +64,56 @@ jobs:
             fi
           done
           
-          if [ ! -f "temp-site/src/content/docs/index.mdx" ]; then
-            FIRST_DOC=$(find temp-site/src/content/docs -name "*.md" -type f | sort | head -1)
+          if [ ! -f "temp-site/docs/index.md" ]; then
+            FIRST_DOC=$(find temp-site/docs -name "*.md" -type f | sort | head -1)
             if [ -n "$FIRST_DOC" ]; then
-              cp "$FIRST_DOC" temp-site/src/content/docs/index.mdx
+              cp "$FIRST_DOC" temp-site/docs/index.md
+            else
+              printf '%s\n' '---' 'title: Welcome' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > temp-site/docs/index.md
             fi
-          fi
-          
-          if [ ! -f "temp-site/src/content/docs/index.mdx" ]; then
-            printf '%s\n' '---' 'title: Welcome to Docs' 'description: Get started with your documentation.' '---' '' 'Welcome! Add your markdown files to get started.' > temp-site/src/content/docs/index.mdx
-          fi
-          
-          if ! head -3 temp-site/src/content/docs/index.mdx | grep -q "^---"; then
-            TEMP_CONTENT=$(cat temp-site/src/content/docs/index.mdx)
-            printf '%s\n' '---' 'title: Home' 'description: Documentation homepage.' '---' '' "$TEMP_CONTENT" > temp-site/src/content/docs/index.mdx
           fi
           
           cd temp-site
           
-          SIDEBAR_ITEMS="{ slug: '' },"
-          for dir in src/content/docs/*/; do
+          printf '%s\n' '{' '  "name": "temp-site",' '  "version": "0.0.0",' '  "scripts": {' '    "build": "rspress build"' '  },' '  "dependencies": {' '    "rspress": "^1.0.0"' '  }' '}' > package.json
+          
+          SIDEBAR_ITEMS=""
+          for dir in docs/*/; do
             if [ -d "$dir" ]; then
               DIRNAME=$(basename "$dir")
               LABEL=$(echo "$DIRNAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
-              SIDEBAR_ITEMS="${SIDEBAR_ITEMS} { label: '${LABEL}', autogenerate: { directory: '${DIRNAME}' } },"
+              SIDEBAR_ITEMS="${SIDEBAR_ITEMS}{ text: '${LABEL}', link: '/${DIRNAME}/', items: 'auto' },"
             fi
           done
           
-          for f in src/content/docs/*.md; do
+          for f in docs/*.md; do
             if [ -f "$f" ] && [ "$(basename "$f")" != "index.md" ]; then
               FILENAME=$(basename "$f" .md)
               SLUG=$(echo "$FILENAME" | tr '[:upper:]' '[:lower:]')
-              SIDEBAR_ITEMS="${SIDEBAR_ITEMS} { slug: '${SLUG}' },"
+              LABEL=$(echo "$FILENAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+              SIDEBAR_ITEMS="${SIDEBAR_ITEMS}{ text: '${LABEL}', link: '/${SLUG}' },"
             fi
           done
           
-          cat > astro.config.mjs << CONFIGEOF
-          import { defineConfig } from 'astro/config';
-          import starlight from '@astrojs/starlight';
+          cat > rspress.config.ts << CONFIGEOF
+          import { defineConfig } from 'rspress/config';
           
           export default defineConfig({
-            site: 'https://${OWNER}.github.io',
-            base: '/${REPO_NAME}',
-            integrations: [
-              starlight({
-                title: '${OWNER}/${REPO_NAME}',
-                logo: {
-                  src: './src/assets/avatar.png',
-                },
-                favicon: '/favicon.png',
-                social: [
-                  { icon: 'github', label: 'GitHub', href: 'https://github.com/${OWNER}/${REPO_NAME}' },
-                ],
-                sidebar: [
+            root: 'docs',
+            base: '/${REPO_NAME}/',
+            title: '${OWNER}/${REPO_NAME}',
+            icon: '/favicon.png',
+            logo: '/logo.png',
+            themeConfig: {
+              socialLinks: [
+                { icon: 'github', mode: 'link', content: 'https://github.com/${OWNER}/${REPO_NAME}' },
+              ],
+              sidebar: {
+                '/': [
                   ${SIDEBAR_ITEMS}
                 ],
-                credits: false,
-              }),
-            ],
+              },
+            },
           });
           CONFIGEOF
           
@@ -135,7 +126,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: temp-site/dist
+          path: temp-site/doc_build
 
   deploy:
     environment:
