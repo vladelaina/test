@@ -16,6 +16,8 @@
 - [ ] Use `onBrokenLinks: 'ignore'` to prevent build failures on broken links
 - [ ] Use `markdown.hooks.onBrokenMarkdownLinks: 'ignore'` (new location in v3.9+)
 - [ ] Don't include deprecated options like root-level `onBrokenMarkdownLinks`
+- [ ] For local search, use `@easyops-cn/docusaurus-search-local` (no API key needed)
+- [ ] Algolia search requires API key - not suitable for generic themes
 
 ## VitePress Configuration
 
@@ -25,6 +27,8 @@
 - [ ] Output directory is `.vitepress/dist` (not `build`)
 - [ ] Use `srcDir: 'docs'` to specify source directory
 - [ ] Exclude `node_modules` in content backup
+- [ ] For local search, use `search: { provider: 'local' }` (built-in)
+- [ ] `logo.link` does NOT support external URLs - need custom theme to override
 
 ## Sidebar Generation (VitePress)
 
@@ -65,6 +69,23 @@ Priority order:
 - [ ] GitHub Pages keeps old version online during build (atomic deployment)
 - [ ] First deployment shows blank page until complete - this is normal
 - [ ] Public repos have unlimited GitHub Actions minutes
+- [ ] Add npm cache to speed up builds: `actions/cache@v4` with `~/.npm` path
+
+## Shell Script Best Practices (GitHub Actions)
+
+- [ ] Don't use `sed -i '1s/^/...\n.../'` - `\n` may not work on all systems
+- [ ] Don't use heredoc (`<< EOF`) inside YAML `run:` blocks - causes syntax errors
+- [ ] Use `printf '%s\n' 'line1' 'line2'` for multi-line content
+- [ ] Use temp files + `cat` + `mv` to prepend content to files
+- [ ] Always quote variables: `"$TARGET"` not `$TARGET`
+
+## Logo & Branding
+
+- [ ] Use `https://github.com/USERNAME.png` to get user/org avatar
+- [ ] VitePress: need custom theme (`enhanceApp`) to make logo link to external URL
+- [ ] Docusaurus: `logo.href` + `logo.target: '_blank'` works for external links
+- [ ] Set favicon with `head: [['link', { rel: 'icon', href: '...' }]]` (VitePress)
+- [ ] Docusaurus favicon can be external URL directly
 
 ## Testing Scenarios
 
@@ -80,6 +101,7 @@ Before releasing a theme, test with:
 - [ ] Very long filenames
 - [ ] Files starting with `_` (usually ignored by default)
 - [ ] Files containing `localhost` URLs (dead link check)
+- [ ] Repository without `index.md` (homepage fallback logic)
 
 ## Common Errors & Solutions
 
@@ -92,6 +114,8 @@ Before releasing a theme, test with:
 | `onBrokenMarkdownLinks deprecated` | Old config location | Move to `markdown.hooks` |
 | `Found dead link` (VitePress) | Broken links in markdown | Use `ignoreDeadLinks: true` |
 | `sidebar: 'auto' not working` | VitePress doesn't auto-generate | Write custom sidebar script |
+| `Page Not Found` on homepage | Missing `slug: /` frontmatter | Add frontmatter to first doc |
+| `here-document delimited by end-of-file` | Heredoc in YAML run block | Use `printf` instead |
 
 ## Multi-Language Support
 
