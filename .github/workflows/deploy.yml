@@ -29,7 +29,7 @@ jobs:
 
       - name: Clone Docusaurus and Build
         run: |
-          npx create-docusaurus@latest docusaurus-site classic
+          npx create-docusaurus@latest docusaurus-site classic --javascript
           # 如果你的 main 分支有自定义的 docs 文件夹，可以覆盖进去
           # cp -r docs/* docusaurus-site/docs/ 2>/dev/null || true
           cd docusaurus-site
