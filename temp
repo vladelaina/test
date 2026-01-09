@@ -83,6 +83,22 @@ jobs:
           
           cd temp-site
           
+          SIDEBAR_ITEMS="{ slug: '' },"
+          for dir in src/content/docs/*/; do
+            if [ -d "$dir" ]; then
+              DIRNAME=$(basename "$dir")
+              LABEL=$(echo "$DIRNAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+              SIDEBAR_ITEMS="${SIDEBAR_ITEMS} { label: '${LABEL}', autogenerate: { directory: '${DIRNAME}' } },"
+            fi
+          done
+          
+          for f in src/content/docs/*.md; do
+            if [ -f "$f" ] && [ "$(basename "$f")" != "index.md" ]; then
+              FILENAME=$(basename "$f" .md)
+              SIDEBAR_ITEMS="${SIDEBAR_ITEMS} { slug: '${FILENAME}' },"
+            fi
+          done
+          
           cat > astro.config.mjs << CONFIGEOF
           import { defineConfig } from 'astro/config';
           import starlight from '@astrojs/starlight';
@@ -101,10 +117,7 @@ jobs:
                   { icon: 'github', label: 'GitHub', href: 'https://github.com/${OWNER}/${REPO_NAME}' },
                 ],
                 sidebar: [
-                  {
-                    label: 'Docs',
-                    autogenerate: { directory: '.' },
-                  },
+                  ${SIDEBAR_ITEMS}
                 ],
                 credits: false,
               }),
