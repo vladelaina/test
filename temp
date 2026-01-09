@@ -1,4 +1,4 @@
-name: Deploy Docusaurus to GitHub Pages
+name: Deploy MkDocs Material to GitHub Pages
 
 on:
   workflow_call:
@@ -19,17 +19,20 @@ jobs:
       - name: Checkout your repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          node-version: 20
+          python-version: '3.x'
 
-      - name: Cache npm dependencies
+      - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.npm
-          key: npm-docusaurus-${{ runner.os }}
-          restore-keys: npm-docusaurus-
+          path: ~/.cache/pip
+          key: pip-mkdocs-${{ runner.os }}
+          restore-keys: pip-mkdocs-
+
+      - name: Install MkDocs Material
+        run: pip install mkdocs-material
 
       - name: Backup user content
         run: |
@@ -39,125 +42,84 @@ jobs:
             case "$dir" in
               .*) ;;
               node_modules) ;;
+              __pycache__) ;;
+              site) ;;
               *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
             esac
           done
 
-      - name: Check if already initialized
-        id: check
-        run: |
-          if [ -f "package.json" ]; then
-            echo "initialized=true" >> $GITHUB_OUTPUT
-          else
-            echo "initialized=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create Docusaurus project (if not initialized)
-        if: steps.check.outputs.initialized == 'false'
-        run: |
-          npx create-docusaurus@latest temp-site classic --javascript
-          cp -rn temp-site/* . 2>/dev/null || true
-          cp -rn temp-site/.* . 2>/dev/null || true
-          rm -rf temp-site
-
-      - name: Configure for Docs-only mode
+      - name: Setup MkDocs project
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           
-          cat > docusaurus.config.js << CONFIGEOF
-          import {themes as prismThemes} from 'prism-react-renderer';
+          mkdir -p docs
+          cp -r /tmp/user-content/* docs/ 2>/dev/null || true
           
-          const config = {
-            title: '${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}',
-            tagline: 'Documentation',
-            favicon: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
-            url: 'https://${GITHUB_REPOSITORY_OWNER}.github.io',
-            baseUrl: '/${REPO_NAME}/',
-            organizationName: '${GITHUB_REPOSITORY_OWNER}',
-            projectName: '${REPO_NAME}',
-            onBrokenLinks: 'ignore',
-            markdown: {
-              format: 'md',
-              hooks: {
-                onBrokenMarkdownLinks: 'ignore',
-              },
-            },
-            i18n: {
-              defaultLocale: 'en',
-              locales: ['en'],
-            },
-            themes: ['@easyops-cn/docusaurus-search-local'],
-            presets: [
-              [
-                'classic',
-                ({
-                  docs: {
-                    routeBasePath: '/',
-                    path: 'content',
-                  },
-                  blog: false,
-                  theme: {
-                    customCss: './src/css/custom.css',
-                  },
-                }),
-              ],
-            ],
-            themeConfig:
-              ({
-                navbar: {
-                  title: '${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}',
-                  logo: {
-                    alt: 'Logo',
-                    src: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
-                    href: 'https://github.com/${GITHUB_REPOSITORY}',
-                    target: '_blank',
-                  },
-                  items: [
-                    {
-                      href: 'https://github.com/${GITHUB_REPOSITORY}',
-                      label: 'GitHub',
-                      position: 'right',
-                    },
-                  ],
-                },
-                prism: {
-                  theme: prismThemes.github,
-                  darkTheme: prismThemes.dracula,
-                },
-              }),
-          };
-          
-          export default config;
-          CONFIGEOF
-          
-          rm -rf blog src/pages src/components docs
-          mkdir -p content
-          cp -r /tmp/user-content/* content/ 2>/dev/null || true
-          
-          if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
-            printf '%s\n' '---' 'slug: /' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > content/index.md
+          if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then
+            printf '%s\n' '# Welcome' '' 'Add your markdown files to get started.' > docs/index.md
           else
-            if [ -f "content/index.md" ]; then
-              TARGET="content/index.md"
-            elif [ -f "content/README.md" ]; then
-              TARGET="content/README.md"
-            else
-              TARGET=$(find content -name "*.md" -type f | sort | head -1)
-            fi
-            
-            if [ -n "$TARGET" ] && ! grep -q "^slug: /" "$TARGET"; then
-              TMPFILE=$(mktemp)
-              printf '%s\n' '---' 'slug: /' '---' '' > "$TMPFILE"
-              cat "$TARGET" >> "$TMPFILE"
-              mv "$TMPFILE" "$TARGET"
+            if [ ! -f "docs/index.md" ]; then
+              if [ -f "docs/README.md" ]; then
+                mv docs/README.md docs/index.md
+              else
+                FIRST_DOC=$(find docs -name "*.md" -type f | sort | head -1)
+                if [ -n "$FIRST_DOC" ]; then
+                  cp "$FIRST_DOC" docs/index.md
+                fi
+              fi
             fi
           fi
+          
+          cat > mkdocs.yml << CONFIGEOF
+          site_name: ${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}
+          site_url: https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}/
+          repo_url: https://github.com/${GITHUB_REPOSITORY}
+          repo_name: ${GITHUB_REPOSITORY}
+          
+          theme:
+            name: material
+            logo: https://github.com/${GITHUB_REPOSITORY_OWNER}.png
+            favicon: https://github.com/${GITHUB_REPOSITORY_OWNER}.png
+            features:
+              - navigation.instant
+              - navigation.tracking
+              - navigation.sections
+              - navigation.expand
+              - search.suggest
+              - search.highlight
+              - content.code.copy
+            palette:
+              - scheme: default
+                primary: indigo
+                accent: indigo
+                toggle:
+                  icon: material/brightness-7
+                  name: Switch to dark mode
+              - scheme: slate
+                primary: indigo
+                accent: indigo
+                toggle:
+                  icon: material/brightness-4
+                  name: Switch to light mode
+          
+          plugins:
+            - search
+          
+          extra:
+            generator: false
+          
+          markdown_extensions:
+            - pymdownx.highlight:
+                anchor_linenums: true
+            - pymdownx.superfences
+            - pymdownx.tabbed:
+                alternate_style: true
+            - admonition
+            - pymdownx.details
+          CONFIGEOF
 
-      - name: Install dependencies and Build
-        run: |
-          npm install
-          npm install @easyops-cn/docusaurus-search-local --save
-          npm run build
+      - name: Build
+        run: mkdocs build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -165,7 +127,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build
+          path: site
 
   deploy:
     environment:
