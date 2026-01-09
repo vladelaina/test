@@ -27,21 +27,37 @@ jobs:
         with:
           node-version: 20
 
-      - name: Clone Docusaurus and Build
+      - name: Check if already initialized
+        id: check
         run: |
-          npx create-docusaurus@latest docusaurus-site classic --javascript
-          # 如果你的 main 分支有自定义的 docs 文件夹，可以覆盖进去
-          # cp -r docs/* docusaurus-site/docs/ 2>/dev/null || true
-          cd docusaurus-site
+          if [ -f "package.json" ]; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Docusaurus project (if not initialized)
+        if: steps.check.outputs.initialized == 'false'
+        run: |
+          npx create-docusaurus@latest temp-site classic --javascript
+          mv temp-site/* .
+          mv temp-site/.* . 2>/dev/null || true
+          rm -rf temp-site
+
+      - name: Install dependencies and Build
+        run: |
+          npm install
           npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docusaurus-site/build
+          path: build
 
   deploy:
     environment:
