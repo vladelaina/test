@@ -66,32 +66,55 @@ async def Outlook_register(page, email, password):
     day = str(random.randint(1, 28))
 
     try:
-        print("[Info: Page] - Navigating to Outlook registration page...")
-        # 强制指定中文环境 (lc=2052 是简体中文)
-        await page.goto("https://outlook.live.com/mail/0/?prompt=create_account&lc=2052&mkt=zh-CN", timeout=30000,
+        print("[Info: Page] - Navigating to Outlook registration page (Default locale)...")
+        # 移除强制中文参数，改回默认，减少重定向风险
+        await page.goto("https://outlook.live.com/mail/0/?prompt=create_account", timeout=30000,
                         wait_until="domcontentloaded")
         print("[Info: Page] - Page loaded, waiting for interactions...")
         
-        # 尝试打印页面标题，确认加载情况
-        title = await page.title()
-        print(f"[Info: Page Title] - {title}")
+        # 初始化 start_time，确保后续逻辑可用
+        start_time = time.time()
+        
+        # 稍微等待一下页面稳定
+        await page.wait_for_timeout(3000)
 
-        # 增加对不同语言按钮的兼容（虽然强制了中文，但双重保险）
+        # 尝试打印页面标题
         try:
-            # 优先找中文
-            await page.get_by_text('同意并继续').wait_for(timeout=10000)
-            start_time = time.time()
-            await page.wait_for_timeout(2000)
-            await page.get_by_text('同意并继续').click(timeout=10000)
+            title = await page.title()
+            print(f"[Info: Page Title] - {title}")
         except:
-            print("[Info: Button] - '同意并继续' not found, trying English 'Next' or skipping...")
-            # 有时候直接就是输入框，没有同意页面，或者显示的是 Next
-            try:
-                # 尝试找 Next 按钮（如果有的话，通常是 create account 流程的第一步）
-                # 但 Outlook 直接创建通常是先 Create Account 按钮或者直接输入邮箱
-                pass 
-            except:
-                pass
+            print("[Info: Page Title] - Could not get title (navigation in progress?)")
+
+        # 智能点击开始按钮 (支持中文、英文、Next按钮)
+        # 1. 尝试找中文 "同意并继续"
+        if await page.get_by_text('同意并继续').count() > 0:
+             print("[Info: Button] - Found Chinese '同意并继续'")
+             await page.get_by_text('同意并继续').click(timeout=10000)
+             # 重新更新 start_time，因为点击后才是真正交互开始
+             start_time = time.time()
+        
+        # 2. 尝试找英文 "Agree and continue" (可能需要根据实际页面调整文本)
+        elif await page.get_by_text('Agree and continue').count() > 0:
+             print("[Info: Button] - Found English 'Agree and continue'")
+             await page.get_by_text('Agree and continue').click(timeout=10000)
+             start_time = time.time()
+
+        # 3. 尝试找 "Next" (有些流程第一步直接是 Next)
+        elif await page.get_by_text('Next').count() > 0:
+             print("[Info: Button] - Found 'Next'")
+             await page.get_by_text('Next').click(timeout=10000)
+             
+        # 4. 尝试找 "Create free account" (首页入口)
+        elif await page.get_by_text('Create free account').count() > 0:
+             print("[Info: Button] - Found 'Create free account'")
+             await page.get_by_text('Create free account').click(timeout=10000)
+
+        # 5. 如果直接就是输入框（新建电子邮件），那就不需要点击任何开始按钮
+        elif await page.locator('[aria-label="新建电子邮件"]').count() > 0 or await page.locator('[aria-label="New email"]').count() > 0 or await page.locator('[name="MemberName"]').count() > 0:
+             print("[Info: Flow] - Already at email input step.")
+        
+        else:
+             print("[Warning: Flow] - No known start button found. Trying to proceed anyway...")
 
     except Exception as e:
         print(f"[Error: Page Load] - {e}")
@@ -111,8 +134,23 @@ async def Outlook_register(page, email, password):
         return False
 
     try:
-        await page.locator('[aria-label="新建电子邮件"]').type(email, delay=80, timeout=10000)
+        # 兼容英文界面的输入框定位
+        # 中文: [aria-label="新建电子邮件"]
+        # 英文: [aria-label="New email"]
+        email_input = page.locator('[aria-label="新建电子邮件"]')
+        if await email_input.count() == 0:
+            email_input = page.locator('[aria-label="New email"]')
+        
+        # 如果还是找不到，尝试用通用的 ID 或 name
+        if await email_input.count() == 0:
+            email_input = page.locator('[name="MemberName"]') # 通常是 MemberName
+
+        await email_input.type(email, delay=80, timeout=10000)
+        
+        # 兼容 Next 按钮
+        # [data-testid="primaryButton"] 通常是通用的，但文本可能是 Next 或 下一步
         await page.locator('[data-testid="primaryButton"]').click(timeout=5000)
+        
         await page.wait_for_timeout(400)
         await page.locator('[type="password"]').type(password, delay=60, timeout=10000)
         await page.wait_for_timeout(400)
@@ -127,13 +165,28 @@ async def Outlook_register(page, email, password):
             await page.wait_for_timeout(1200)
             await page.locator('[name="BirthDay"]').select_option(value=day)
         except:
+            # 兼容中文和英文下拉菜单选择
             await page.locator('[name="BirthMonth"]').click()
             await page.wait_for_timeout(400)
-            await page.locator(f'[role="option"]:text-is("{month}月")').click()
+            
+            # 尝试点击月份（中文 "X月" 或 英文全称/缩写）
+            try:
+                await page.locator(f'[role="option"]:text-is("{month}月")').click(timeout=1000)
+            except:
+                # 英文月份 (January, February...) 这里简化处理，尝试直接按索引或 value
+                # 如果是英文界面，通常 value 也是数字字符串 "1", "2"...
+                # 如果 select_option 失败了，说明是自定义 dropdown
+                # 这里暂时假设英文下 select_option 能工作，或者需要更复杂的英文月份映射
+                print("[Warning: Date] - Failed to select month by text, trying to skip or random click...")
+            
             await page.wait_for_timeout(1200)
             await page.locator('[name="BirthDay"]').click()
             await page.wait_for_timeout(400)
-            await page.locator(f'[role="option"]:text-is("{day}日")').click()
+            try:
+                await page.locator(f'[role="option"]:text-is("{day}日")').click(timeout=1000)
+            except:
+                # 英文日期通常只是数字
+                await page.locator(f'[role="option"]:text-is("{day}")').click(timeout=1000)
 
         await page.locator('[data-testid="primaryButton"]').click(timeout=5000)
         await page.locator('#lastNameInput').type(lastname, delay=120, timeout=10000)
