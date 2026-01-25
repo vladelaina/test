@@ -97,8 +97,14 @@ def main():
         print("No SUB_URL environment variable found.")
         return
 
-    print(f"Fetching subscription from: {sub_url[:20]}...")
-    content = fetch_subscription(sub_url)
+    # 智能判断：如果是 URL 则下载，否则视为直接内容
+    if sub_url.startswith("http://") or sub_url.startswith("https://"):
+        print(f"Fetching subscription from: {sub_url[:20]}...")
+        content = fetch_subscription(sub_url)
+    else:
+        print("SUB_URL provided appears to be raw content (Base64). Using directly.")
+        content = sub_url
+
     if not content:
         # 如果获取失败，生成一个空的 config 以免后续步骤报错找不到文件
         with open("proxy_config.json", "w", encoding="utf-8") as f:
