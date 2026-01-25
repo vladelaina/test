@@ -36,6 +36,7 @@ def random_email(length):
 
 
 async def OpenBrowser(playwright):
+    print(f"[Info: Browser] - Launching browser (Headless: {headless_mode})...")
     try:
         launch_args = {
             "headless": headless_mode,
@@ -48,10 +49,11 @@ async def OpenBrowser(playwright):
             launch_args["executable_path"] = browser_path
             
         browser = await playwright.chromium.launch(**launch_args)
+        print("[Info: Browser] - Browser launched successfully.")
         return browser
     except Exception as e:
         error = traceback.format_exc()
-        logger.error(error)
+        print(f"[Error: Browser Launch] - {error}")
         return None
 
 
@@ -64,14 +66,26 @@ async def Outlook_register(page, email, password):
     day = str(random.randint(1, 28))
 
     try:
-        await page.goto("https://outlook.live.com/mail/0/?prompt=create_account", timeout=20000,
+        print("[Info: Page] - Navigating to Outlook registration page...")
+        await page.goto("https://outlook.live.com/mail/0/?prompt=create_account", timeout=30000,
                         wait_until="domcontentloaded")
+        print("[Info: Page] - Page loaded, waiting for interactions...")
+        # 尝试打印页面标题，确认加载情况
+        title = await page.title()
+        print(f"[Info: Page Title] - {title}")
+
         await page.get_by_text('同意并继续').wait_for(timeout=30000)
         start_time = time.time()
         await page.wait_for_timeout(2000)
         await page.get_by_text('同意并继续').click(timeout=30000)
-    except:
-        print("[Error: IP] - IP质量不佳，无法进入注册界面。 ")
+    except Exception as e:
+        print(f"[Error: Page Load] - {e}")
+        # 截图以查看具体情况
+        try:
+            await page.screenshot(path=f"Results/error_load_{int(time.time())}.png")
+        except:
+            pass
+        print("[Error: IP] - IP质量不佳，无法进入注册界面或页面加载超时。 ")
         return False
 
     try:
@@ -282,7 +296,9 @@ if __name__ == '__main__':
     max_captcha_retries = int(os.environ.get('MAX_CAPTCHA_RETRIES', data.get('max_captcha_retries') or 3))
     
     # 代理设置
-    proxy = os.environ.get('PROXY', data.get('proxy'))
+    # proxy = os.environ.get('PROXY', data.get('proxy'))
+    # 强制使用本地 Clash 代理
+    proxy = "http://127.0.0.1:7890"
     
     enable_oauth2 = os.environ.get('ENABLE_OAUTH2', str(data.get('enable_oauth2', False))).lower() == 'true'
     concurrent_flows = int(os.environ.get('CONCURRENT_FLOWS', data.get('concurrent_flows') or 1))
@@ -290,5 +306,14 @@ if __name__ == '__main__':
 
     # 是否开启无头模式 (GitHub Actions 默认开启，本地调试默认关闭)
     headless_mode = os.environ.get('HEADLESS', 'False').lower() == 'true'
+
+    # 检查 IP
+    print("Checking IP via Proxy...")
+    try:
+        import requests
+        resp = requests.get("https://api.ipify.org?format=json", proxies={"http": proxy, "https": proxy}, timeout=10)
+        print(f"[Info: Current IP] - {resp.json().get('ip')} (If this is your real IP, proxy failed!)")
+    except Exception as e:
+        print(f"[Warning: Proxy Check Failed] - {e}")
 
     asyncio.run(main(concurrent_flows, max_tasks))

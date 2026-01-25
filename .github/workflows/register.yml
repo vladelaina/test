@@ -1,4 +1,4 @@
-name: Outlook Register
+name: Outlook Register with Clash
 
 on:
   workflow_dispatch:
@@ -26,13 +26,34 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install playwright
+        pip install playwright requests pyyaml
         playwright install chromium
         playwright install-deps
 
+    - name: Setup Clash
+      env:
+        SUB_URL: ${{ secrets.PROXY }} # 使用 PROXY secret 存储订阅链接
+      run: |
+        # 下载 Clash Premium (使用更稳定的镜像或源)
+        wget https://github.com/Dreamacro/clash/releases/download/v1.18.0/clash-linux-amd64-v1.18.0.gz
+        gzip -d clash-linux-amd64-v1.18.0.gz
+        mv clash-linux-amd64-v1.18.0 clash
+        chmod +x clash
+        
+        # 生成配置
+        python convert_sub.py
+        
+        # 启动 Clash (后台运行)
+        # 这里的 config.yaml 由 convert_sub.py 生成
+        nohup ./clash -f config.yaml > clash.log 2>&1 &
+        
+        # 等待 Clash 启动
+        sleep 5
+        echo "Clash log tail:"
+        tail -n 20 clash.log
+
     - name: Run Registration
       env:
-        PROXY: ${{ secrets.PROXY }}
         MAX_TASKS: ${{ inputs.max_tasks }}
         CONCURRENT_FLOWS: 1
         HEADLESS: true
@@ -41,9 +62,12 @@ jobs:
       run: |
         xvfb-run python OutlookRegister.py
 
-    - name: Upload Results
+    - name: Upload Results & Logs
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: registration-results
-        path: Results/
+        path: |
+          Results/
+          clash.log
+          config.yaml
