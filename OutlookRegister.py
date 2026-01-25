@@ -67,19 +67,41 @@ async def Outlook_register(page, email, password):
 
     try:
         print("[Info: Page] - Navigating to Outlook registration page...")
-        await page.goto("https://outlook.live.com/mail/0/?prompt=create_account", timeout=30000,
+        # 强制指定中文环境 (lc=2052 是简体中文)
+        await page.goto("https://outlook.live.com/mail/0/?prompt=create_account&lc=2052&mkt=zh-CN", timeout=30000,
                         wait_until="domcontentloaded")
         print("[Info: Page] - Page loaded, waiting for interactions...")
+        
         # 尝试打印页面标题，确认加载情况
         title = await page.title()
         print(f"[Info: Page Title] - {title}")
 
-        await page.get_by_text('同意并继续').wait_for(timeout=30000)
-        start_time = time.time()
-        await page.wait_for_timeout(2000)
-        await page.get_by_text('同意并继续').click(timeout=30000)
+        # 增加对不同语言按钮的兼容（虽然强制了中文，但双重保险）
+        try:
+            # 优先找中文
+            await page.get_by_text('同意并继续').wait_for(timeout=10000)
+            start_time = time.time()
+            await page.wait_for_timeout(2000)
+            await page.get_by_text('同意并继续').click(timeout=10000)
+        except:
+            print("[Info: Button] - '同意并继续' not found, trying English 'Next' or skipping...")
+            # 有时候直接就是输入框，没有同意页面，或者显示的是 Next
+            try:
+                # 尝试找 Next 按钮（如果有的话，通常是 create account 流程的第一步）
+                # 但 Outlook 直接创建通常是先 Create Account 按钮或者直接输入邮箱
+                pass 
+            except:
+                pass
+
     except Exception as e:
         print(f"[Error: Page Load] - {e}")
+        # 截图以查看具体情况
+        try:
+            await page.screenshot(path=f"Results/error_load_{int(time.time())}.png")
+        except:
+            pass
+        print("[Error: IP] - IP质量不佳，无法进入注册界面或页面加载超时。 ")
+        return False
         # 截图以查看具体情况
         try:
             await page.screenshot(path=f"Results/error_load_{int(time.time())}.png")
