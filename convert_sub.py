@@ -1,9 +1,9 @@
 import os
 import requests
 import base64
-import yaml
 import urllib.parse
 import json
+import random
 
 def fetch_subscription(url):
     try:
@@ -23,49 +23,68 @@ def parse_trojan(url):
         
         params = urllib.parse.parse_qs(parsed.query)
         
-        node = {
-            "name": urllib.parse.unquote(parsed.fragment) or parsed.hostname,
-            "type": "trojan",
-            "server": parsed.hostname,
+        server = {
+            "address": parsed.hostname,
             "port": parsed.port,
             "password": parsed.username,
-            "udp": True,
-            "skip-cert-verify": True
+        }
+        
+        stream_settings = {
+            "network": "tcp",
+            "security": "tls",
+            "tlsSettings": {
+                "allowInsecure": True  # Default allow insecure for simplicity in scraping
+            }
         }
         
         if 'sni' in params:
-            node['sni'] = params['sni'][0]
-        if 'allowInsecure' in params: #有时候参数名不一样
-             node['skip-cert-verify'] = True
+            stream_settings["tlsSettings"]["serverName"] = params['sni'][0]
+        
+        # Check for other transport types like ws if needed, but basic trojan is usually tcp+tls
+        if 'type' in params and params['type'][0] == 'ws':
+             stream_settings['network'] = 'ws'
+             ws_settings = {}
+             if 'path' in params:
+                 ws_settings['path'] = params['path'][0]
+             if 'host' in params:
+                 ws_settings['headers'] = {'Host': params['host'][0]}
+             stream_settings['wsSettings'] = ws_settings
+
+        node = {
+            "protocol": "trojan",
+            "settings": {
+                "servers": [server]
+            },
+            "streamSettings": stream_settings
+        }
              
         return node
     except Exception as e:
         print(f"Error parsing trojan link {url}: {e}")
         return None
 
-def generate_clash_config(nodes):
-    proxy_names = [node['name'] for node in nodes]
-    
+def generate_v2ray_config(node):
     config = {
-        "port": 7890,
-        "socks-port": 7891,
-        "allow-lan": False,
-        "mode": "rule",
-        "log-level": "info",
-        "external-controller": "127.0.0.1:9090",
-        "proxies": nodes,
-        "proxy-groups": [
+        "log": {
+            "loglevel": "warning"
+        },
+        "inbounds": [
             {
-                "name": "Proxy",
-                "type": "url-test", # 自动选择延迟最低的节点
-                "url": "http://www.gstatic.com/generate_204",
-                "interval": 300,
-                "tolerance": 50,
-                "proxies": proxy_names
+                "port": 7890,
+                "listen": "127.0.0.1",
+                "protocol": "http",
+                "settings": {
+                    "timeout": 360
+                }
             }
         ],
-        "rules": [
-            "MATCH,Proxy"
+        "outbounds": [
+            node,
+            {
+                "protocol": "freedom",
+                "tag": "direct",
+                "settings": {}
+            }
         ]
     }
     return config
@@ -90,7 +109,6 @@ def main():
         decoded = base64.b64decode(content).decode('utf-8')
     except Exception as e:
         print(f"Base64 decode error: {e}")
-        # Maybe it's not base64, try using raw content if it looks like a list
         decoded = content
 
     nodes = []
@@ -107,12 +125,16 @@ def main():
 
     print(f"Found {len(nodes)} trojan nodes.")
     
-    config = generate_clash_config(nodes)
+    # 随机选择一个节点
+    selected_node = random.choice(nodes)
+    print(f"Selected node: {selected_node['settings']['servers'][0]['address']}")
     
-    with open("config.yaml", "w", encoding="utf-8") as f:
-        yaml.dump(config, f, allow_unicode=True)
+    config = generate_v2ray_config(selected_node)
     
-    print("Clash config generated: config.yaml")
+    with open("config.json", "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+    
+    print("v2ray config generated: config.json")
 
 if __name__ == "__main__":
     main()
