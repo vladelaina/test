@@ -76,7 +76,28 @@ async def Outlook_register(page, email, password):
         start_time = time.time()
         
         # 稍微等待一下页面稳定
-        await page.wait_for_timeout(3000)
+        # await page.wait_for_timeout(3000)
+        # 改用更可靠的等待方式
+        try:
+            await page.wait_for_load_state('networkidle', timeout=15000)
+        except:
+            print("[Warning: Page Load] - Network idle timeout, proceeding...")
+
+        # 截图调试 1: 页面刚加载完
+        try:
+            await page.screenshot(path="Results/debug_page_loaded.png")
+            print("[Info: Debug] - Saved debug_page_loaded.png")
+        except:
+            pass
+
+        # 打印页面文本内容，帮助分析
+        try:
+            content = await page.content()
+            # 只打印 body 的文本内容，避免 html 标签干扰
+            text_content = await page.evaluate("document.body.innerText")
+            print(f"[Info: Page Content Snippet] - {text_content[:200]}...")
+        except:
+            print("[Info: Page Content] - Could not get page content.")
 
         # 尝试打印页面标题
         try:
@@ -98,6 +119,11 @@ async def Outlook_register(page, email, password):
              print("[Info: Button] - Found English 'Agree and continue'")
              await page.get_by_text('Agree and continue').click(timeout=10000)
              start_time = time.time()
+        
+        # 增加: 尝试找 "Sign up"
+        elif await page.get_by_text('Sign up').count() > 0:
+             print("[Info: Button] - Found 'Sign up'")
+             await page.get_by_text('Sign up').click(timeout=10000)
 
         # 3. 尝试找 "Next" (有些流程第一步直接是 Next)
         elif await page.get_by_text('Next').count() > 0:
@@ -115,6 +141,12 @@ async def Outlook_register(page, email, password):
         
         else:
              print("[Warning: Flow] - No known start button found. Trying to proceed anyway...")
+             # 截图调试 2: 找不到按钮时
+             try:
+                 await page.screenshot(path="Results/debug_no_button.png")
+                 print("[Info: Debug] - Saved debug_no_button.png")
+             except:
+                 pass
 
     except Exception as e:
         print(f"[Error: Page Load] - {e}")
