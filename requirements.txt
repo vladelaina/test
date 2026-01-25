@@ -1,0 +1,4 @@
+faker
+requests
+playwright
+loguru==0.6.0
