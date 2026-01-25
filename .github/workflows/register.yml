@@ -1,4 +1,4 @@
-name: Outlook Register with v2ray
+name: Outlook Register with Xray
 
 on:
   workflow_dispatch:
@@ -30,28 +30,39 @@ jobs:
         playwright install chromium
         playwright install-deps
 
-    - name: Setup v2ray
+    - name: Setup Xray
       env:
         SUB_URL: ${{ secrets.PROXY }}
       run: |
-        # 下载 v2ray-core
-        wget -O v2ray.zip https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip
-        unzip v2ray.zip -d v2ray-bin
-        chmod +x v2ray-bin/v2ray
+        # 下载 Xray-core
+        wget -O xray.zip https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+        unzip xray.zip -d xray-bin
+        chmod +x xray-bin/xray
         
         # 生成配置
+        # 这里会生成 proxy_config.json
         python convert_sub.py
-        mv config.json v2ray-bin/config.json
         
-        # 启动 v2ray (后台运行)
-        cd v2ray-bin
-        nohup ./v2ray run -config config.json > v2ray.log 2>&1 &
+        # 检查是否成功生成了配置
+        if [ ! -s proxy_config.json ] || [ "$(cat proxy_config.json)" == "{}" ]; then
+          echo "Error: Proxy config generation failed."
+          exit 1
+        fi
+
+        mv proxy_config.json xray-bin/config.json
+        
+        # 启动 Xray (后台运行)
+        cd xray-bin
+        nohup ./xray run -c config.json > xray.log 2>&1 &
         cd ..
         
-        # 等待 v2ray 启动
+        # 等待 Xray 启动
         sleep 3
-        echo "v2ray log tail:"
-        tail -n 20 v2ray-bin/v2ray.log || echo "No log yet"
+        echo "Xray log tail:"
+        tail -n 20 xray-bin/xray.log || echo "No log yet"
+
+    - name: Check Files
+      run: ls -l # 调试用：列出当前文件，确认 config.json 是否存在
 
     - name: Run Registration
       env:
@@ -70,5 +81,5 @@ jobs:
         name: registration-results
         path: |
           Results/
-          v2ray-bin/v2ray.log
-          v2ray-bin/config.json
+          xray-bin/xray.log
+          xray-bin/config.json

@@ -6,8 +6,12 @@ import json
 import random
 
 def fetch_subscription(url):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+    }
     try:
-        resp = requests.get(url, timeout=30)
+        resp = requests.get(url, headers=headers, timeout=30)
         resp.raise_for_status()
         return resp.text
     except Exception as e:
@@ -15,7 +19,6 @@ def fetch_subscription(url):
         return None
 
 def parse_trojan(url):
-    # trojan://password@host:port?params#name
     try:
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme != 'trojan':
@@ -33,14 +36,13 @@ def parse_trojan(url):
             "network": "tcp",
             "security": "tls",
             "tlsSettings": {
-                "allowInsecure": True  # Default allow insecure for simplicity in scraping
+                "allowInsecure": True
             }
         }
         
         if 'sni' in params:
             stream_settings["tlsSettings"]["serverName"] = params['sni'][0]
         
-        # Check for other transport types like ws if needed, but basic trojan is usually tcp+tls
         if 'type' in params and params['type'][0] == 'ws':
              stream_settings['network'] = 'ws'
              ws_settings = {}
@@ -63,7 +65,7 @@ def parse_trojan(url):
         print(f"Error parsing trojan link {url}: {e}")
         return None
 
-def generate_v2ray_config(node):
+def generate_xray_config(node):
     config = {
         "log": {
             "loglevel": "warning"
@@ -98,11 +100,12 @@ def main():
     print(f"Fetching subscription from: {sub_url[:20]}...")
     content = fetch_subscription(sub_url)
     if not content:
+        # 如果获取失败，生成一个空的 config 以免后续步骤报错找不到文件
+        with open("proxy_config.json", "w", encoding="utf-8") as f:
+            f.write("{}")
         return
 
-    # Try decoding base64
     try:
-        # Pad base64 if needed
         padding = len(content) % 4
         if padding:
             content += "=" * (4 - padding)
@@ -121,20 +124,23 @@ def main():
     
     if not nodes:
         print("No valid trojan nodes found.")
+        # 同上，生成空配置
+        with open("proxy_config.json", "w", encoding="utf-8") as f:
+            f.write("{}")
         return
 
     print(f"Found {len(nodes)} trojan nodes.")
     
-    # 随机选择一个节点
     selected_node = random.choice(nodes)
     print(f"Selected node: {selected_node['settings']['servers'][0]['address']}")
     
-    config = generate_v2ray_config(selected_node)
+    config = generate_xray_config(selected_node)
     
-    with open("config.json", "w", encoding="utf-8") as f:
+    # 注意：我们将代理配置保存为 proxy_config.json，避免覆盖项目的主配置 config.json
+    with open("proxy_config.json", "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
     
-    print("v2ray config generated: config.json")
+    print("Xray config generated: proxy_config.json")
 
 if __name__ == "__main__":
     main()
