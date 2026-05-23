@@ -1,49 +1,67 @@
-name: |-
-  🐛 问题反馈
-  🐛 Bug Report
-description: |-
-  🛠️ 发现问题？请在这里告诉我们！
-
-  🛠️ Found a problem? Let us know here!
-title: |-
-  [🐛问题]:
-  [🐛Bug]:
+name: 🐛 问题反馈
+description: "🛠️ 提交一个问题反馈"
+title: "[🐛问题]: "
 labels: ["bug"]
 body:
-  - type: input
-    id: "expectation"
+  - type: markdown
     attributes:
-      label: |-
-        ✨ 你期望发生什么
-        ✨ What You Expected
-      description: |-
+      value: |-
+        ## 🐛 问题反馈
+
+        ## 🐛 Bug Report
+
+        🛠️ 发现问题？请在这里告诉我们！
+
+        🛠️ Found a problem? Let us know here!
+
+  - type: markdown
+    attributes:
+      value: |-
+        ### ✨ 你期望发生什么
+
+        ### ✨ What You Expected
+
         软件本应如何工作？请描述你期望发生的情况。
 
         How should the software work? Describe what you expected to happen.
+  - type: input
+    id: "expectation"
+    attributes:
+      label: "✨ 你期望发生什么"
     validations:
       required: false
-  - type: textarea
-    id: "describe-the-bug"
+
+  - type: markdown
     attributes:
-      label: |-
-        ❓ 实际发生了什么
-        ❓ What Actually Happened
-      description: |-
+      value: |-
+        ### ❓ 实际发生了什么
+
+        ### ❓ What Actually Happened
+
         出现了什么问题？请告诉我们你看到的情况，细节越多越好！
 
         Oops! Something went wrong? Please tell us what you saw - the more details, the better!
+  - type: textarea
+    id: "describe-the-bug"
+    attributes:
+      label: "❓ 实际发生了什么"
     validations:
       required: true
-  - type: textarea
-    id: "reproduction-method"
+
+  - type: markdown
     attributes:
-      label: |-
-        📝 复现步骤
-        📝 Steps to Reproduce the Issue
-      description: |-
+      value: |-
+        ### 📝 复现步骤
+
+        ### 📝 Steps to Reproduce the Issue
+
         可以告诉我们你是如何遇到这个问题的吗？请列出步骤，方便我们更快定位问题。
 
         Can you tell us how you encountered this bug? List the steps so we can find the problem faster.
+  - type: textarea
+    id: "reproduction-method"
+    attributes:
+      label: "📝 复现步骤"
       placeholder: |-
         例如：
         1. 使用了什么功能
@@ -56,16 +74,21 @@ body:
         3. Oops! Problem occurred!
     validations:
       required: false
-  - type: textarea
-    id: "more"
+
+  - type: markdown
     attributes:
-      label: |-
-        📌 补充信息
-        📌 Additional Information
-      description: |-
+      value: |-
+        ### 📌 补充信息
+
+        ### 📌 Additional Information
+
         还有其他想告诉我们的吗？例如系统信息、版本号等。
 
         Anything else you'd like to tell us? System information, version numbers, etc.
+  - type: textarea
+    id: "more"
+    attributes:
+      label: "📌 补充信息"
       placeholder: |-
         示例：
         系统：Windows 11
@@ -76,22 +99,31 @@ body:
         Version: 23H2
     validations:
       required: false
-  - type: checkboxes
-    id: "latest-version"
+
+  - type: markdown
     attributes:
-      label: |-
-        ✅ 最后检查
-        ✅ Final Checklist
-      description: |-
+      value: |-
+        ### ✅ 最后检查
+
+        ### ✅ Final Checklist
+
         在提交问题反馈前，请确认以下内容：
 
         Before submitting your bug report, please confirm the following:
+
+        ⚡ 我已确认正在使用最新版本，而不是旧版本。
+
+        ⚡ I've confirmed I'm using the latest version, not an older one.
+
+        📋 我已查看 FAQ 和已知问题列表，确认这是一个新问题。
+
+        📋 I've checked the FAQ and known issues list to confirm this is a new bug.
+  - type: checkboxes
+    id: "latest-version"
+    attributes:
+      label: "✅ 最后检查"
       options:
-        - label: |-
-            ⚡ 我已确认正在使用最新版本，而不是旧版本。
-            ⚡ I've confirmed I'm using the latest version, not an older one.
+        - label: "⚡ 我已确认正在使用最新版本，而不是旧版本。"
           required: true
-        - label: |-
-            📋 我已查看 FAQ 和已知问题列表，确认这是一个新问题。
-            📋 I've checked the FAQ and known issues list to confirm this is a new bug.
+        - label: "📋 我已查看 FAQ 和已知问题列表，确认这是一个新问题。"
           required: true
